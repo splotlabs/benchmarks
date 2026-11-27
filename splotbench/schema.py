@@ -284,6 +284,13 @@ def _lock_rules(document: dict) -> list[str]:
     problems = []
     for index, entry in enumerate(document["lock"]["implementations"]):
         problems += _release_problems(f"$.lock.implementations[{index}]", entry)
+    lock = document["lock"]
+    for label, values in (
+        ("suite.cases", [case["id"] for case in lock["suite"]["cases"]]),
+        ("implementations", [entry["id"] for entry in lock["implementations"]]),
+        *((f"roles.{role}.threads", entry["threads"]) for role, entry in lock["roles"].items()),
+    ):
+        problems += [f"$.lock.{label}: {value!r} appears more than once" for value in sorted(set(v for v in values if values.count(v) > 1))]
     digest = sha256_bytes(canonical_json(document["lock"]))
     if document["lock_digest"] != digest:
         problems.append(f"$.lock_digest: {document['lock_digest']} does not match the lock content ({digest})")

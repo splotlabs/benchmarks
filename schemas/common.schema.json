@@ -41,6 +41,7 @@
     "dataset_id": { "type": "string", "pattern": "^ds-[0-9a-f]{16}$" },
     "series_id": { "type": "string", "pattern": "^ser-[0-9a-f]{16}$" },
     "count": { "type": "integer", "minimum": 0 },
+    "metric_or_null": { "description": "A measured metric value; at most 10^15 (ns or bytes).", "type": ["integer", "null"], "minimum": 0, "maximum": 1000000000000000 },
     "count_or_null": { "type": ["integer", "null"], "minimum": 0 },
     "threads": { "type": "integer", "minimum": 1, "maximum": 1024 },
     "arch": { "enum": ["aarch64", "x86_64"] },

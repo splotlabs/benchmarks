@@ -31,6 +31,8 @@ Run the commands from the repository root.
 ./bench --version         # harness version and commit
 ./bench identity          # harness identity as JSON: commit, tree, dirty flag, content digest
 ./bench validate PATH...  # check JSON and JSONL files, bundles and dataset directories
+./bench assemble --lock LOCK.json BUNDLE... -o OUT [--select ROLE=RUN_ID] [--official]
+                          # check bundles and write OUT/datasets/<dataset_id>/
 ```
 
 The data formats and identities are described in [docs/FORMATS.md](docs/FORMATS.md).
@@ -52,7 +54,7 @@ with Python 3.11 and 3.14.
 | Path | Contents |
 | --- | --- |
 | `bench` | Entry script. |
-| `splotbench/` | The harness package. `cli.py` registers one parser per command module. `schema.py` validates, `provenance.py` records source, release and binary identity, `bundle.py` writes and reads bundles. |
+| `splotbench/` | The harness package. `cli.py` registers one parser per command module. `schema.py` validates, `provenance.py` records source, release and binary identity, `bundle.py` writes and reads bundles, `assemble.py` checks bundles and builds datasets. |
 | `schemas/` | JSON Schema files: the source of truth for every data format. |
 | `docs/` | Format documentation. |
 | `tests/` | Unit tests and synthetic fixtures (`tests/fixtures/`). |
