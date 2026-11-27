@@ -320,6 +320,14 @@ class DatasetAndCliTest(unittest.TestCase):
         done = bench(ROOT, "validate", *map(str, paths))
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(done.stdout.count("valid: "), 4)
+        self.assertIn(f"valid: {FIXTURES / 'index.json'}\n", done.stdout)
+
+    def test_valid_lock_names_its_digest_and_campaign(self):
+        path = FIXTURES / "lock.json"
+        document = json.loads(path.read_text())
+        campaign = f"{document['lock']['name']}-{document['lock_digest'].removeprefix('sha256:')[:12]}"
+        done = bench(ROOT, "validate", str(path))
+        self.assertEqual(done.stdout, f"valid: {path} (lock {document['lock_digest']}, campaign {campaign})\n")
 
     def test_tampered_dataset_reports_each_problem_and_exits_1(self):
         (self.dataset / "summary.csv").write_text("synthetic tampered\n")

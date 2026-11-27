@@ -88,7 +88,7 @@ def snapshot(directory: Path) -> dict:
 
     commit = head_commit(directory)
     tree = _git(directory, "rev-parse", "HEAD^{tree}").decode().strip() if commit else None
-    dirty = bool(_git(directory, "status", "--porcelain"))
+    dirty = bool(_git(directory, "--no-optional-locks", "status", "--porcelain"))  # never rewrites the index
     gitlinks = {}
     for entry in _split(_git(directory, "ls-files", "--stage", "-z")):
         meta, _, path = entry.partition("\t")
@@ -243,6 +243,23 @@ def resolve(
                 url = release_url_template.replace("{tag}", tag).replace("{version}", version)
             release = {"tag": tag, "version": version, "url": url}
     return {"commit": commit, "identity": "release" if release else "development", "release": release}
+
+
+def check_harness(source: dict, repository: str) -> None:
+    """A standard lock names a clean harness commit that the upstream serves, so another host can check it out."""
+    commit = source["commit"]
+    if commit is None or not clean_at(source, commit):
+        raise BenchError(
+            "the harness checkout is not a clean Git commit: a second host could not check out this harness. "
+            "Commit and push the change, or lock from a clean released commit."
+        )
+    try:
+        _verify_commit(repository, commit, commit)
+    except BenchError:
+        raise BenchError(
+            f"harness commit {commit} cannot be fetched from {repository}: a second host could not check out "
+            "this harness. Push the commit (or check the network), or lock from a released commit."
+        ) from None
 
 
 def clean_at(source: dict, commit: str | None) -> bool:

@@ -18,11 +18,12 @@ import subprocess
 import time
 from pathlib import Path
 
-from . import adapters, build, corpus, plan, provenance, schema
-from .util import EXIT_FAILURE, EXIT_PREREQUISITE, BenchError, canonical_json, sha256_file
+from . import adapters, build, corpus, host, plan, provenance, schema
+from .util import EXIT_FAILURE, EXIT_PREREQUISITE, BenchError, canonical_json, sha256_file, write_atomic
 
 CHUNK = 1 << 20
 GRACE_S = 2
+LOG_LIMIT = 1 << 20  # bytes per decoder log; the middle of a longer log is removed
 # After the decoder exits, the pipe must reach end of file within this time; else a descendant holds it.
 PIPE_GRACE_S = 1
 POLL_S = 0.01
@@ -55,20 +56,21 @@ def _wait(process: subprocess.Popen, deadline: float) -> int | None:
     return code
 
 
-def run_decode(argv: list[str], log: Path, timeout_s: int) -> dict:
+def run_decode(argv: list[str], log: Path, timeout_s: int, pass_fds: tuple[int, ...] = ()) -> dict:
     """Run one decode in its own process group; hash and count stdout. stderr goes to `log`.
 
     On timeout: terminate the group, wait `GRACE_S`, kill the group, reap. When the
     decoder exits but the pipe stays open longer than `PIPE_GRACE_S`, a descendant
     holds it: the result has `held_open`. The group is killed in every case, so no
-    descendant survives the check.
+    descendant survives the check. `pass_fds` stay open in the decoder (the host lock).
     """
     with open(log, "wb") as file:
         file.write(f"$ {shlex.join(argv)}\n".encode())
         file.flush()
         try:
             process = subprocess.Popen(
-                argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=file, start_new_session=True
+                argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=file, start_new_session=True,
+                pass_fds=pass_fds,
             )
         except OSError as error:
             return {"code": None, "timed_out": False, "bytes": None, "sha256": None, "error": str(error)}
@@ -149,10 +151,30 @@ def _next_log(directory: Path, case_id: str, threads: int) -> Path:
     return path
 
 
+def matches_case(row: dict, case: dict) -> bool:
+    """True when a correctness row was checked against the reference of this lock case."""
+    reference = case["reference"]
+    return (row["workload"]["reference_sha256"], row["workload"]["reference_bytes"]) == (reference["sha256"], reference["raw_bytes"])
+
+
+def cap_log(path: Path, limit: int = LOG_LIMIT) -> None:
+    """Keep a log at most `limit` bytes: the head, one marker line with the removed byte count, the tail."""
+    size = path.stat().st_size
+    if size <= limit:
+        return
+    half = limit // 2
+    with open(path, "rb") as file:
+        head = file.read(half)
+        file.seek(size - half)
+        tail = file.read()
+    marker = f"\n# harness: {size - 2 * half} bytes removed here; the log is capped at {limit} bytes\n".encode()
+    write_atomic(path, head + marker + tail)
+
+
 def _append(path: Path, row: dict) -> None:
     problems = schema.validate(row)
     if problems:
-        raise BenchError(f"internal error: correctness row is invalid: {problems[0]}")
+        raise BenchError(f"internal error: {row['schema']} row is invalid: {problems[0]}")
     with open(path, "ab") as file:
         file.write(canonical_json(row) + b"\n")
         file.flush()
@@ -176,8 +198,12 @@ def run(
     case: str | None = None,
     implementation: str | None = None,
     threads: int | None = None,
+    pass_fds: tuple[int, ...] = (),
 ) -> list[dict]:
-    """Check every (build, case, thread budget) of `role` and append one row each. Return the rows."""
+    """Check every (build, case, thread budget) of `role` and append one row each. Return the rows.
+
+    `pass_fds` stay open in each decoder: the host lock stays held while a decoder lives.
+    """
     work = Path(work)
     build.role_arch(lock, role)
     body = lock["lock"]
@@ -216,8 +242,9 @@ def run(
                     (outcome, detail), code, result = refused, None, {"bytes": None, "sha256": None}
                 else:
                     log = _next_log(logs, item["id"], budget)
-                    result = run_decode(adapter.verify_command(binary, inputs[item["id"]], budget), log, timeout_s)
+                    result = run_decode(adapter.verify_command(binary, inputs[item["id"]], budget), log, timeout_s, pass_fds)
                     outcome, code, detail = _judge(adapter, item, result, log, timeout_s)
+                    cap_log(log)
                 row = {
                     "schema": "splotbench.correctness/1",
                     "build_id": manifest["build_id"],
@@ -242,12 +269,16 @@ def run(
 
 
 def _verify(args: argparse.Namespace) -> int:
-    rows = run(
-        plan.load_lock(args.lock), args.role, args.work, case=args.case, implementation=args.implementation, threads=args.threads
-    )
+    with host.HostLock(args.work) as held:  # one harness run at a time; decoders keep the lock
+        rows = run(
+            plan.load_lock(args.lock), args.role, args.work, case=args.case, implementation=args.implementation,
+            threads=args.threads, pass_fds=(held.descriptor,),
+        )
     for row in rows:
         detail = f" ({row['detail']})" if row["detail"] else ""
         print(f"{row['outcome']}: {row['implementation']} {row['case_id']} threads={row['threads']}{detail}")
+    outcomes = ("ok", "incorrect", "unsupported", "timeout", "error")
+    print("checks: " + ", ".join(f"{sum(row['outcome'] == o for row in rows)} {o}" for o in outcomes))
     return EXIT_FAILURE if any(row["outcome"] != "ok" for row in rows) else 0
 
 

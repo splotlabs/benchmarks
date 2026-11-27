@@ -19,7 +19,7 @@ import statistics
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import bundle, plan, provenance, schema
+from . import bundle, plan, provenance, schema, verify
 from .util import BenchError, canonical_json, sha256_bytes
 
 AGGREGATION = "summary/1"
@@ -148,6 +148,11 @@ def _import(path: Path, lock_doc: dict) -> Imported:
         key = (row["implementation"], row["case_id"], row["threads"])
         if key in correctness:
             problems.append(f"{where}: second correctness row for {key}")
+        if row["case_id"] in cases and not verify.matches_case(row, cases[row["case_id"]]):
+            problems.append(
+                f"{where}: case {row['case_id']} was checked against another reference than the lock "
+                "(reference_sha256 or reference_bytes differ); this bundle is inconsistent"
+            )
         correctness[key] = row
     attempts, sequences, ok_counts = {}, set(), {}
     for number, row in enumerate(_rows(members["attempts.jsonl"]), 1):

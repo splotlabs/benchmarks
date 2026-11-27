@@ -35,7 +35,7 @@ class CliTest(unittest.TestCase):
         subparsers = next(a for a in build_parser()._actions if isinstance(a, argparse._SubParsersAction))
         self.assertEqual(
             sorted(subparsers.choices),
-            ["assemble", "identity", "lock", "matrix", "prepare", "publish", "validate", "verify"],
+            ["assemble", "bundle", "doctor", "identity", "lock", "matrix", "prepare", "publish", "run", "validate", "verify"],
         )
         for command in subparsers.choices:
             self.assertEqual(bench(ROOT, command, "--help").returncode, 0)
