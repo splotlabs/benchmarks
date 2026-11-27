@@ -27,8 +27,10 @@ exercised:
 - The unit tests run in CI on Linux x86-64, Linux arm64 and macOS arm64.
 - The real decoder builds, the correctness pass and a short runner smoke ran natively
   only on macOS arm64 ([docs/QUALIFICATION.md](docs/QUALIFICATION.md)).
-- The Linux build recipes are not verified on a native host yet
-  ([issue 12](https://github.com/splotlabs/benchmarks/issues/12)).
+- The decoder builds, the correctness pass and a minimal runner smoke passed on hosted
+  Linux x86-64 and Linux arm64 virtual machines with one lock
+  ([docs/QUALIFICATION.md](docs/QUALIFICATION.md#linux-hosted-runners)). A physical
+  Linux host and a run on real hardware are still the owner's first campaign.
 
 Windows is not supported.
 

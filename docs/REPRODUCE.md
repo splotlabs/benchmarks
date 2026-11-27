@@ -18,7 +18,7 @@ output directory.
 ## What you need
 
 - A native Linux x86-64, Linux arm64 or macOS arm64 machine. Not a VM, not Rosetta.
-  The Linux builds are not verified on a native host yet; see
+  The Linux builds passed on hosted virtual machines, not yet on a physical Linux host; see
   [METHODOLOGY.md](METHODOLOGY.md#builds-policy-optimized-source1).
 - Python 3.11 or newer, Git, and the build tools in
   [RUNBOOK-FIRST-HOST.md](RUNBOOK-FIRST-HOST.md#1-check-the-host).

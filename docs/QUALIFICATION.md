@@ -52,10 +52,50 @@ Correctness cases: `artistic-concert-1920x1080-25fps-qp135-130f`,
 `ritualdance-1920x1080-60fps-10bit-420-qp160-120f`,
 `tunnelflag-1920x1080-60fps-10bit-420-qp160-73f`.
 
+## Linux hosted runners
+
+On 2026-11-27 the manual workflow `recipe-smoke.yml` ran once on GitHub-hosted runners:
+[run 46040527264](https://github.com/splotlabs/benchmarks/actions/runs/46040527264). Hosted runners are **virtual machines**. This is a recipe,
+correctness and runner smoke. It is not a benchmark result: its timing data was discarded,
+and the workflow uploads nothing but the lock.
+
+| Role | Runner image | Architecture | OS and kernel (from `bench doctor`) |
+| --- | --- | --- | --- |
+| `x86-64` | `ubuntu-24.04` (image version 20261122.23) | x86_64, not emulated | Ubuntu 24.04.5 LTS, Linux 7.0.0-1018-aws |
+| `arm64` | `ubuntu-24.04-arm` (image version 20261122.193) | aarch64, not emulated | Ubuntu 24.04.5 LTS, Linux 7.0.0-1020-azure |
+
+The harness checkout was clean at commit `9c48f5fb711775ccb4f4fc855adec14ccde4170b`. One
+lock, made in the same run, was validated on both roles:
+`sha256:0867c40171cb1e76bbd61ea9d8d2db054ef4910df18b3e4fb0259e9e04fd9433` (campaign
+`recipe-smoke-0867c40171cb`). Suite `quick` (six 1920x1080 streams), requested threads 1
+and 4, no warm-up, 1 repetition. Rust 1.100.0 on both roles.
+
+| Decoder | Commit | Role | Build id | Binary SHA-256 |
+| --- | --- | --- | --- | --- |
+| Splot | `e36d8b0030f765c7209c6622f450dd996ad12105` | `x86-64` | `bld-196e7284ead90ea4` | `c8dfb1d11645dbb22a2cae65c0616fc4d7991ab967df8835c206b4d65be0fb4f` |
+| Splot | `e36d8b0030f765c7209c6622f450dd996ad12105` | `arm64` | `bld-b3c4c164bbed00c2` | `9a76e1108b6d747fbe0660a926281a1e395f01cd3053ec9674aaab5aaca879fc` |
+| dav2d | `33b0d3d234c6f7b6b64938ac7b93bc6e6e53b19c` | `x86-64` | `bld-8e4d1f575ea7a268` | `15c4af71e4b9f8e0462b360ef6b785dd58ed9f7930160537cb4a58bbc9591b7f` |
+| dav2d | `33b0d3d234c6f7b6b64938ac7b93bc6e6e53b19c` | `arm64` | `bld-d6da445350779548` | `8c240fd6e9165d26724119fb2f28f99d85434a7bbde69d497660e567e80c1ba6` |
+| avmdec | `1cfda4fa4879ef2da411b02fe2f51597daab3451` | `x86-64` | `bld-6255b170003eeef9` | `05ab98408cdf06b5a743ec2c7578a0d49464349eb3343356168ebaecd97d3c48` |
+| avmdec | `1cfda4fa4879ef2da411b02fe2f51597daab3451` | `arm64` | `bld-1312f77cccf0de06` | `a94e9df5a68a716810c8663b7f1098c1dd6b3d6417529dae64d5fc3bef7ee59c` |
+
+All builds have identity `development` and class `verified`.
+
+| Role | `bench verify` | Final `bench run` line |
+| --- | --- | --- |
+| `x86-64` | `checks: 36 ok, 0 incorrect, 0 unsupported, 0 timeout, 0 error` | `run x86-64-20261127T172418Z-befc74a9: complete, 36 correctness rows, 36 attempt rows` |
+| `arm64` | `checks: 36 ok, 0 incorrect, 0 unsupported, 0 timeout, 0 error` | `run arm64-20261127T172911Z-04556256: complete, 36 correctness rows, 36 attempt rows` |
+
+`bench doctor` had no `fail` line on either role. Every attempt was `ok`. The bundles
+and the assembled datasets (origin `local`, incomplete, 36 `ok` cells each) were valid.
+On the arm64 runner the CPU model is `null`: Linux on arm64 has no model name in
+`/proc/cpuinfo`.
+
 ## Not verified
 
-- Linux x86-64 and Linux arm64 native builds and runs
-  ([issue 12](https://github.com/splotlabs/benchmarks/issues/12)).
+- A physical Linux host. The Linux recipes, the correctness pass and a minimal runner
+  smoke passed only on hosted Linux x86-64 and arm64 virtual machines (above). A run on
+  real hardware is the owner's first campaign.
 - A virtual machine cannot be detected by the harness. Only Rosetta and emulation are.
 - Film grain. The sequence headers of all corpus streams allow film grain. The correctness
   pass matches the reference output with grain processing on. That the timed discard modes

@@ -34,9 +34,11 @@ harness commit of the lock. `<out>` is a new output directory for assembly.
 
 ## Status of the Linux recipes
 
-The decoder builds ran natively only on macOS arm64. The Linux x86-64 and Linux arm64
-recipes are **not verified on a native host**. The first x86-64 run is also the first
-native check of the Linux recipes. If a recipe fails (`bench prepare` stops in a build
+The decoder builds ran natively on macOS arm64. On hosted Linux x86-64 and Linux arm64
+virtual machines the builds, the correctness pass and a minimal runner smoke passed
+([QUALIFICATION.md](QUALIFICATION.md#linux-hosted-runners)). The recipes have **not run on
+a physical Linux host**: the first x86-64 run is also their first check on real hardware.
+If a recipe fails (`bench prepare` stops in a build
 step), do not work around it. Report:
 
 - the decoder id, the locked commit and the role;

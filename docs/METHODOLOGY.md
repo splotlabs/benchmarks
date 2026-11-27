@@ -90,8 +90,11 @@ origin `upstream-release-asset` is refused ("not supported").
 | dav2d | `meson setup --buildtype release -Ddefault_library=static -Denable_tools=true -Denable_tests=false -Denable_docs=false -Denable_asm=true -Dxxhash_muxer=disabled`, then `ninja tools/dav2d` | `-Dc_args=-march=x86-64-v3`; nasm | `tools/dav2d` |
 | avmdec | `cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCONFIG_AV2_ENCODER=0 -DENABLE_TESTS=0 -DENABLE_DOCS=0 -DENABLE_EXAMPLES=0 -DENABLE_TOOLS=0`, then `cmake --build --target avmdec` | `-DENABLE_NASM=1`, `-DCMAKE_C_FLAGS=-march=x86-64-v3`, `-DCMAKE_CXX_FLAGS=-march=x86-64-v3` | `avmdec` |
 
-Native host paths that ran: **macOS arm64 only** (Apple clang, Rust 1.100.0).
-The Linux x86-64 and Linux arm64 recipes are **not verified on a native host**.
+Host paths that ran: native macOS arm64 (Apple clang, Rust 1.100.0), and hosted Linux
+x86-64 and Linux arm64 **virtual machines** (GitHub `ubuntu-24.04` and `ubuntu-24.04-arm`,
+Rust 1.100.0), where the builds, the correctness pass and a minimal runner smoke
+passed ([QUALIFICATION.md](QUALIFICATION.md#linux-hosted-runners)). The Linux recipes
+have **not run on a physical Linux host**; that is the owner's first campaign.
 
 ## Output policy `decode-discard`
 
