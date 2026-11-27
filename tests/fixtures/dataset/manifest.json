@@ -38,7 +38,12 @@
       "arm64"
     ],
     "cells_expected": 16,
-    "cells_ok": 6
+    "cells_ok": 6,
+    "status_counts": {
+      "incorrect": 2,
+      "not-run": 8,
+      "ok": 6
+    }
   },
   "files": [
     {

@@ -43,7 +43,7 @@ Digest strings are `sha256:<64 hex>`.
 | `splotbench.attempt/1` | `attempts.jsonl` | One raw timed process run: ids, `phase`, `round`, `outcome`, and the decode payload with `frames` and typed `metrics`. |
 | `splotbench.run/1` | `run.json` | One host run and the manifest of its bundle: `run_id`, `campaign_id`, `lock_digest`, `role`, `machine_id`, `state`, `class`, `harness`, `fingerprint_digest`, `build_ids`. |
 | `splotbench.dataset/1` | `manifest.json` | One assembled dataset: ids, `origin`, `complete`, `runs` with bundle digests, optional `excluded_runs`, `coverage` (with `status_counts`), `files`. |
-| `splotbench.summary/1` | `summary.json` | Everything the website shows: methodology, machines, implementations, builds, cases, `cells`, `speedups`, `aggregates`, downloads. |
+| `splotbench.summary/1` | `summary.json` | Everything the website shows: methodology, machines, implementations, builds, cases, `coverage`, `cells`, `speedups`, `aggregates`, downloads. |
 | `splotbench.index/1` | `index.json` | Published datasets and `latest_complete`. |
 
 Paths in manifests are relative: to the work directory `W` in build manifests,
@@ -181,9 +181,11 @@ incomplete. Origin is `synthetic` for a synthetic lock, `official` with `--offic
 `local`. `--official` needs every role, every run `complete` and class `verified`, a `verified` assembling harness, `verified` builds, a build of every implementation in every run, no
 `not-run` or `interrupted` cell and a standard lock; else it exits 1, lists the reasons and
 writes nothing. An existing dataset directory with other content is refused; with the same
-content the command changes nothing. `manifest.coverage.status_counts` counts the whole
-expected matrix; the cells of a role without a run count as `not-run` there. `summary.json`
-has cells only for machines that have a run.
+content the command changes nothing. `coverage` (`roles_expected`, `roles_present`, `cells_expected`, `cells_ok`, `status_counts`) is one object, written
+identically into `manifest.json` and `summary.json`, so a viewer can say why a dataset is partial.
+`status_counts` counts the whole
+expected matrix; the cells of a role without a run count as `not-run` there. `cells` holds
+only machines that have a run.
 
 ### Cell status
 

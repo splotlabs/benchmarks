@@ -5,7 +5,7 @@
   "description": "Self-contained and derived from raw rows. A value that was not measured or is not known is null. Only ok cells have numbers. Paths are relative to this file.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "dataset_id", "campaign_id", "name", "lock_digest", "origin", "complete", "workload", "methodology", "aggregation", "corpus", "suite", "metrics", "machines", "implementations", "builds", "cases", "cells", "speedups", "aggregates", "downloads", "reproduce"],
+  "required": ["schema", "dataset_id", "campaign_id", "name", "lock_digest", "origin", "complete", "workload", "methodology", "aggregation", "coverage", "corpus", "suite", "metrics", "machines", "implementations", "builds", "cases", "cells", "speedups", "aggregates", "downloads", "reproduce"],
   "properties": {
     "schema": { "const": "splotbench.summary/1" },
     "dataset_id": { "$ref": "common.schema.json#/$defs/dataset_id" },
@@ -41,6 +41,7 @@
         "harness": { "$ref": "common.schema.json#/$defs/harness" }
       }
     },
+    "coverage": { "$ref": "common.schema.json#/$defs/coverage" },
     "corpus": {
       "type": "object",
       "additionalProperties": false,

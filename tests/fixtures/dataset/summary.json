@@ -30,6 +30,22 @@
       "class": "development"
     }
   },
+  "coverage": {
+    "roles_expected": [
+      "arm64",
+      "x86-64"
+    ],
+    "roles_present": [
+      "arm64"
+    ],
+    "cells_expected": 16,
+    "cells_ok": 6,
+    "status_counts": {
+      "incorrect": 2,
+      "not-run": 8,
+      "ok": 6
+    }
+  },
   "corpus": {
     "id": "fixture-corpus",
     "digest": "sha256:1c0ca79d4efeac458a580bf59eb58b9422fde7550d5eb9c22f6bc4a70723b093",

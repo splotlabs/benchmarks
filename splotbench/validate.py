@@ -66,7 +66,7 @@ def dataset_problems(directory: Path) -> list[str]:
         return problems
 
     manifest, summary, lock = documents["manifest.json"], documents["summary.json"], documents["lock.json"]
-    for field in ("dataset_id", "campaign_id", "lock_digest", "origin", "complete"):
+    for field in ("dataset_id", "campaign_id", "lock_digest", "origin", "complete", "coverage"):
         if summary[field] != manifest[field]:
             problems.append(f"summary.json: {field} {summary[field]!r} differs from manifest.json {manifest[field]!r}")
     if lock["lock_digest"] != manifest["lock_digest"]:

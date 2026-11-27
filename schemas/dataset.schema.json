@@ -57,23 +57,7 @@
         }
       }
     },
-    "coverage": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["roles_expected", "roles_present", "cells_expected", "cells_ok"],
-      "properties": {
-        "roles_expected": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/role" } },
-        "roles_present": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/role" } },
-        "cells_expected": { "$ref": "common.schema.json#/$defs/count" },
-        "cells_ok": { "$ref": "common.schema.json#/$defs/count" },
-        "status_counts": {
-          "description": "Cells of the whole expected matrix by status. Cells of a missing role count as not-run.",
-          "type": "object",
-          "propertyNames": { "enum": ["ok", "incorrect", "unsupported", "timeout", "error", "interrupted", "not-run"] },
-          "additionalProperties": { "$ref": "common.schema.json#/$defs/count" }
-        }
-      }
-    },
+    "coverage": { "$ref": "common.schema.json#/$defs/coverage" },
     "files": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/sized_file" } }
   }
 }

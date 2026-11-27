@@ -244,6 +244,56 @@
       "required": ["unit", "direction"],
       "properties": { "unit": { "const": "frames/s" }, "direction": { "const": "higher" } }
     },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "roles_expected",
+        "roles_present",
+        "cells_expected",
+        "cells_ok",
+        "status_counts"
+      ],
+      "properties": {
+        "roles_expected": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/role"
+          }
+        },
+        "roles_present": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/role"
+          }
+        },
+        "cells_expected": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "cells_ok": {
+          "$ref": "common.schema.json#/$defs/count"
+        },
+        "status_counts": {
+          "description": "Cells of the whole expected matrix by status. Cells of a missing role count as not-run.",
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "ok",
+              "incorrect",
+              "unsupported",
+              "timeout",
+              "error",
+              "interrupted",
+              "not-run"
+            ]
+          },
+          "additionalProperties": {
+            "$ref": "common.schema.json#/$defs/count"
+          }
+        }
+      },
+      "description": "Coverage of the whole expected matrix. Written identically into manifest.json and summary.json."
+    },
     "case": {
       "description": "Case facts as the summary shows them.",
       "type": "object",
