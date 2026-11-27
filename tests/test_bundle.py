@@ -225,6 +225,17 @@ class BundleReaderTest(unittest.TestCase):
             problems = bundle.check_bundle(path)
         self.assertEqual(problems[-1], "the content is larger than 100000 bytes")
 
+    def test_negative_entry_size_is_refused(self):
+        # A base-256 size field can encode a negative number; read(-n) would read the whole stream.
+        info = tarfile.TarInfo("logs/negative.log")
+        info.size = -512
+        header = info.tobuf(tarfile.GNU_FORMAT)
+        path = self.temporary / "negative.tar.gz"
+        path.write_bytes(gzip.compress(header + bytes(10 * 1024 * 1024)))
+        with mock.patch.object(bundle, "MAX_BYTES", 100_000):
+            problems = bundle.check_bundle(path)
+        self.assertIn("negative size", problems[0])
+
     def test_compressed_size_limit(self):
         path = self.temporary / "valid.tar.gz"
         with mock.patch.object(bundle, "MAX_ARCHIVE_BYTES", 100):

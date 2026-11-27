@@ -175,6 +175,8 @@ def read_members(archive: Path) -> tuple[dict[str, bytes], list[str]]:
                 if block == bytes(BLOCK):
                     break
                 entry = tarfile.TarInfo.frombuf(block, "utf-8", "strict")
+                if entry.size < 0:  # a base-256 size field can be negative; read(-n) would read everything
+                    raise tarfile.HeaderError(f"{entry.name}: negative size")
                 padded = -(-entry.size // BLOCK) * BLOCK
                 problem = _path_problem(entry.name)
                 if entry.type != tarfile.REGTYPE and entry.type != tarfile.AREGTYPE:
