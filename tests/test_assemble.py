@@ -58,6 +58,13 @@ ARM = {
 X86 = {(A, C8, 1): [S // 2] * 3}
 
 
+# The assembling harness is injected, so the tests do not depend on the state of the clone.
+HARNESS = {
+    "repository": "https://github.com/splotlabs/benchmarks", "commit": "a" * 40,
+    "snapshot_sha256": "sha256:" + "a1" * 32, "class": "verified",
+}  # fmt: skip
+
+
 class Base(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
@@ -85,6 +92,7 @@ class Base(unittest.TestCase):
         return self.run_bundle("x86-64", X86, **kwargs)
 
     def assemble(self, *bundles, lock_path=None, **kwargs):
+        kwargs.setdefault("harness", HARNESS)
         return assemble.assemble(lock_path or self.lock_path, list(bundles), self.out, **kwargs)
 
     def summary(self, target):
@@ -343,7 +351,7 @@ class RunSelectionTest(Base):
         slow = self.run_bundle("arm64", {**ARM, (A, C8, 1): [9 * S] * 3}, run_id="arm64-20260102T000000Z-aaaaaaaa")
         select = {"arm64": ARM_RUN}
         target = self.assemble(self.arm(), slow, self.x86(), select=select)
-        again = assemble.assemble(target / "lock.json", sorted((target / "bundles").iterdir()), self.tmp / "again", select)
+        again = assemble.assemble(target / "lock.json", sorted((target / "bundles").iterdir()), self.tmp / "again", select, harness=HARNESS)
         self.assertEqual(target.name, again.name)
         first = {p.relative_to(target).as_posix(): p.read_bytes() for p in target.rglob("*") if p.is_file()}
         second = {p.relative_to(again).as_posix(): p.read_bytes() for p in again.rglob("*") if p.is_file()}
@@ -357,6 +365,85 @@ class RunSelectionTest(Base):
         with self.assertRaisesRegex(BenchError, "exists with different content"):
             self.assemble(self.arm(), self.x86())
         self.assertEqual((target / "summary.json").read_bytes(), before)
+
+
+class HarnessIdentityTest(Base):
+    def test_summary_names_the_assembling_harness_and_the_locking_commit(self):
+        arm, x86 = self.arm(), self.x86()
+        doc = self.summary(self.assemble(arm, x86))
+        # Synthetic lock: class synthetic, commit and snapshot of the injected assembling harness.
+        self.assertEqual(doc["aggregation"]["harness"], {**HARNESS, "class": "synthetic"})
+        self.assertEqual(doc["reproduce"]["harness_commit"], LOCK["lock"]["harness"]["snapshot"]["commit"])
+        self.assertNotEqual(doc["reproduce"]["harness_commit"], HARNESS["commit"])
+        manifest = json.loads((self.out / "datasets" / doc["dataset_id"] / "manifest.json").read_text())
+        self.assertEqual(manifest["aggregation"]["harness"], doc["aggregation"]["harness"])
+
+    def test_standard_lock_gives_the_class_of_the_assembling_harness(self):
+        lock = lock_with(lambda lock: lock.update(origin="standard"))
+        self.lock_path.write_text(json.dumps(lock))
+        arm = self.run_bundle("arm64", ARM, lock=lock)
+        dirty = {**HARNESS, "class": "development"}
+        self.assertEqual(self.summary(self.assemble(arm, harness=dirty))["aggregation"]["harness"]["class"], "development")
+
+    def test_other_aggregation_code_never_shares_a_dataset_id(self):
+        arm = self.arm()
+        first = self.assemble(arm)
+        other = self.assemble(arm, harness={**HARNESS, "snapshot_sha256": "sha256:" + "b2" * 32})
+        self.assertNotEqual(first.name, other.name)
+        self.assertEqual(self.assemble(arm).name, first.name)  # same harness, same inputs: same dataset
+
+    def test_official_refuses_a_development_harness(self):
+        lock = lock_with(lambda lock: lock.update(origin="standard"))
+        self.lock_path.write_text(json.dumps(lock))
+        arm = self.run_bundle("arm64", ARM, lock=lock, run_class="verified")
+        x86 = self.run_bundle("x86-64", X86, lock=lock, run_class="verified", run_id=X86_RUN, machine="synthetic-x86")
+        self.assertRejected(arm, x86, text="assembling harness has class development", official=True,
+                            harness={**HARNESS, "class": "development"})  # fmt: skip
+        self.assertTrue(self.assemble(arm, x86, official=True).exists())
+
+
+class SourceAgreementTest(Base):
+    def test_snapshot_disagreement_between_runs_is_refused(self):
+        arm = self.arm(snapshot_sha256="sha256:" + "11" * 32)
+        x86 = self.x86(snapshot_sha256="sha256:" + "22" * 32)
+        message = self.assertRejected(arm, x86, text="source of fixture-a differs between runs")
+        for part in ("snapshot_sha256 sha256:" + "11" * 32, "(role arm64)", "sha256:" + "22" * 32, "(role x86-64)"):
+            self.assertIn(part, message)
+
+    def test_equal_snapshots_are_accepted(self):
+        digest = "sha256:" + "33" * 32
+        self.assemble(self.arm(snapshot_sha256=digest), self.x86(snapshot_sha256=digest))
+
+    def test_attempts_of_a_failed_correctness_cell_are_rejected(self):
+        def edit(documents):
+            documents["correctness"][0]["outcome"] = "incorrect"
+
+        self.assertRejected(self.arm(edit=edit), text="without a correctness row with outcome ok")
+
+
+class MissingBuildTest(Base):
+    def x86_without_b(self):
+        cells = {k: None for k in full_cells(LOCK, "x86-64") if k[0] == B}
+        return self.run_bundle("x86-64", cells, run_id=X86_RUN, machine="synthetic-x86", without=(B,))
+
+    def test_run_without_a_build_gives_not_run_cells(self):
+        target = self.assemble(self.arm(), self.x86_without_b())
+        doc = self.summary(target)
+        cell = self.cell(doc, "synthetic-x86", C8, 1, B)
+        self.assertEqual((cell["status"], cell["build_id"]), ("not-run", None))
+        self.assertEqual(self.cell(doc, "synthetic-x86", C8, 1, A)["status"], "ok")
+        self.assertFalse(doc["complete"])
+        self.assertEqual([b["machine_id"] for b in doc["builds"] if b["implementation"] == B], ["synthetic-arm"])
+        self.assertEqual(validate.problems_for(target), [])
+
+    def test_official_names_the_missing_build(self):
+        lock = lock_with(lambda lock: lock.update(origin="standard"))
+        self.lock_path.write_text(json.dumps(lock))
+        arm = self.run_bundle("arm64", ARM, lock=lock, run_class="verified")
+        cells = {k: None for k in full_cells(lock, "x86-64") if k[0] == B}
+        x86 = self.run_bundle("x86-64", cells, lock=lock, run_class="verified", run_id=X86_RUN,
+                              machine="synthetic-x86", without=(B,))  # fmt: skip
+        self.assertRejected(arm, x86, text=f"run {X86_RUN} has no build of {B}", official=True)
 
 
 class CompletenessTest(Base):

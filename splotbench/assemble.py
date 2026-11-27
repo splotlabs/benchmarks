@@ -294,8 +294,22 @@ def _series_id(lock: dict, run: dict, host: dict) -> str:
     return "ser-" + sha256_bytes(canonical_json(basis)).removeprefix("sha256:")[:16]
 
 
-def _official_problems(lock: dict, selected: list[Imported], cells: list[dict], missing: list[str]) -> list[str]:
+def running_harness() -> dict:
+    """Identity of the harness checkout that runs this code: `verified` only for a clean Git checkout at a commit."""
+    source = provenance.snapshot(provenance.HARNESS_ROOT)
+    return {
+        "repository": provenance.HARNESS_REPOSITORY, "commit": source["commit"],
+        "snapshot_sha256": source["snapshot_sha256"], "class": provenance.identity_class(source, source["commit"]),
+    }  # fmt: skip
+
+
+def _official_problems(lock: dict, selected: list[Imported], cells: list[dict], missing: list[str], harness: dict) -> list[str]:
     problems = ["the lock is synthetic; synthetic data is never official"] if lock["origin"] == "synthetic" else []
+    if harness["class"] != "verified":
+        problems.append(
+            f"the assembling harness has class {harness['class']}, not verified. "
+            "Run assemble from a clean Git checkout at a commit."
+        )
     problems += [f"role {role} has no run" for role in missing]
     for imported in selected:
         run = imported.run
@@ -303,14 +317,25 @@ def _official_problems(lock: dict, selected: list[Imported], cells: list[dict], 
             problems.append(f"run {run['run_id']} is {run['state']}, not complete")
         if run["class"] != "verified":
             problems.append(f"run {run['run_id']} has class {run['class']}, not verified")
+        problems += [
+            f"run {run['run_id']} has no build of {entry['id']}"
+            for entry in lock["implementations"]
+            if entry["id"] not in imported.builds
+        ]
     unfinished = sum(cell["status"] in ("not-run", "interrupted") for cell in cells)
     if unfinished:
         problems.append(f"{unfinished} cells are not-run or interrupted")
     return problems
 
 
-def assemble(lock_path: Path, bundles: list[Path], out: Path, select: dict | None = None, official: bool = False) -> Path:
-    """Build the dataset directory under `out`/datasets and return its path."""
+def assemble(
+    lock_path: Path, bundles: list[Path], out: Path, select: dict | None = None, official: bool = False,
+    harness: dict | None = None,
+) -> Path:  # fmt: skip
+    """Build the dataset directory under `out`/datasets and return its path.
+
+    `harness` is the identity of the assembling harness (see `running_harness`); tests inject it.
+    """
     lock_doc = _load_lock(lock_path)
     lock = lock_doc["lock"]
     runs: dict[str, Imported] = {}
@@ -326,11 +351,9 @@ def assemble(lock_path: Path, bundles: list[Path], out: Path, select: dict | Non
     snapshot = lock["harness"]["snapshot"]
     if snapshot["commit"] is None:
         raise BenchError("the lock has no harness commit. Make the lock with a harness that has a Git commit.")
-    harness = {
-        "repository": lock["harness"]["repository"], "commit": snapshot["commit"],
-        "snapshot_sha256": snapshot["snapshot_sha256"],
-        "class": provenance.identity_class(snapshot, snapshot["commit"], synthetic=lock["origin"] == "synthetic"),
-    }  # fmt: skip
+    harness = harness or running_harness()
+    if lock["origin"] == "synthetic":
+        harness = {**harness, "class": "synthetic"}
 
     cases = lock["suite"]["cases"]
     ids = [entry["id"] for entry in lock["implementations"]]
@@ -349,7 +372,7 @@ def assemble(lock_path: Path, bundles: list[Path], out: Path, select: dict | Non
     complete = not missing and all(i.run["state"] == "complete" for i in selected)
     complete = complete and not counts.get("not-run") and not counts.get("interrupted")
     if official:
-        problems = _official_problems(lock, selected, cells, missing)
+        problems = _official_problems(lock, selected, cells, missing, harness)
         if problems:
             raise BenchError("cannot assemble an official dataset:\n  " + "\n  ".join(problems))
     origin = "synthetic" if lock["origin"] == "synthetic" else "official" if official else "local"
@@ -371,7 +394,7 @@ def assemble(lock_path: Path, bundles: list[Path], out: Path, select: dict | Non
     dataset_id = "ds-" + sha256_bytes(canonical_json({
         "lock_digest": lock_doc["lock_digest"],
         "runs": [{"run_id": i.run["run_id"], "bundle": i.digest} for i in sorted(selected, key=lambda i: i.run["run_id"])],
-        "aggregation": AGGREGATION, "origin": origin,
+        "aggregation": AGGREGATION, "origin": origin, "harness": harness["snapshot_sha256"],
     })).removeprefix("sha256:")[:16]  # fmt: skip
     campaign_id = f"{lock['name']}-{lock_doc['lock_digest'].removeprefix('sha256:')[:12]}"
 
@@ -399,9 +422,22 @@ def assemble(lock_path: Path, bundles: list[Path], out: Path, select: dict | Non
         })  # fmt: skip
     implementations = []
     for entry in lock["implementations"]:
-        build = next((i.builds[entry["id"]] for i in selected if entry["id"] in i.builds), None)
-        if build is None:
+        found = [(i.run["role"], i.builds[entry["id"]]) for i in selected if entry["id"] in i.builds]
+        if not found:
             raise BenchError(f"no selected run has a build of {entry['id']}. Run `bench prepare` for every role.")
+        build = found[0][1]
+        for role, other in found[1:]:
+            first, second = build["source"], other["source"]
+            for field, one, two in (
+                ("commit", first["commit"], second["commit"]),
+                ("snapshot_sha256", first["snapshot"]["snapshot_sha256"], second["snapshot"]["snapshot_sha256"]),
+            ):
+                if one != two:
+                    raise BenchError(
+                        f"the source of {entry['id']} differs between runs: {field} {one} (role {found[0][0]}) "
+                        f"and {two} (role {role}). A clean checkout of one commit has one snapshot on every host; "
+                        "one host built modified source."
+                    )
         implementations.append({
             "id": entry["id"], "name": entry["name"], "repository": entry["repository"], "commit": entry["commit"],
             "identity": entry["identity"], "release": entry["release"], "build_origin": build["source"]["build_origin"],
@@ -438,8 +474,8 @@ def assemble(lock_path: Path, bundles: list[Path], out: Path, select: dict | Non
         "aggregates": _aggregates(lock, [m["machine_id"] for m in machines], index),
         "downloads": DOWNLOADS,
         "reproduce": {
-            "repository": harness["repository"], "harness_commit": harness["commit"],
-            "instructions": f"{harness['repository']}/blob/{harness['commit']}/docs/METHODOLOGY.md",
+            "repository": harness["repository"], "harness_commit": snapshot["commit"],
+            "instructions": f"{harness['repository']}/blob/{snapshot['commit']}/docs/METHODOLOGY.md",
         },
     }  # fmt: skip
 

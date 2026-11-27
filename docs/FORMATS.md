@@ -25,7 +25,7 @@ Each identity has one meaning. Do not use one in place of another.
 | build_id | `bld-` + first 16 hex of sha256 of the canonical JSON of `{implementation, commit, snapshot_sha256, configuration, binary_sha256, libraries}` (`libraries` is the sorted list of library sha256 values) |
 | machine_id | chosen by the owner, `[a-z0-9][a-z0-9-]{1,40}`; never a MAC address or a serial number |
 | fingerprint_digest | `sha256:` of the canonical JSON of the observed host fingerprint; separate from machine_id |
-| dataset_id | `ds-` + first 16 hex of sha256 of the canonical JSON of `{lock digest, sorted run ids with bundle digests, aggregation version, origin}` |
+| dataset_id | `ds-` + first 16 hex of sha256 of the canonical JSON of `{lock digest, sorted run ids with bundle digests, aggregation version, origin, snapshot_sha256 of the assembling harness}` |
 | series_id | `ser-` + 16 hex of a digest of `{corpus identity, methodology, build policy, suite, measurement settings, machine_id, fingerprint digest}` |
 
 Canonical JSON is `json.dumps(value, sort_keys=True, separators=(",", ":"),
@@ -135,18 +135,22 @@ its `lock.json` has the digest of the given lock, `run.json` names the campaign 
 digest, the role is in the lock, the host architecture is the role's `arch`, every build
 is a build of a lock implementation at the lock commit, and every row names a known run,
 build, case, thread budget and implementation. Attempt ids and sequence numbers are
-unique. Binary digests may differ between roles.
+unique. Binary digests may differ between roles. The runs that feed one dataset agree on the source commit and snapshot digest of each implementation; a difference means modified source and is refused. A run without a build of an implementation has `not-run` cells for it.
 
 Run selection: the same run id with the same bytes is imported once. The same run id with
 other bytes is a conflict. Two different runs for one role need `--select ROLE=RUN_ID`.
 Runs that are not selected stay in `bundles/` and in `excluded_runs` of the manifest; they
 feed no cell. The harness never picks a run by speed or time.
 
-`aggregation.harness` and `reproduce` come from the harness identity in the lock. `complete`
+`aggregation.harness` is the identity of the harness checkout that runs `assemble`: repository,
+commit, `snapshot_sha256`, and class `verified` for a clean Git checkout at a commit, else
+`development` (`synthetic` for a synthetic lock). Its `snapshot_sha256` is part of the
+`dataset_id`, so changed aggregation code never reuses an id. `reproduce.harness_commit` is the
+harness commit of the lock, the commit that collected the data. `complete`
 is true when every role of the lock has a selected run, every selected run has state
 `complete`, and no cell is `not-run` or `interrupted`. A failed cell does not make a dataset
 incomplete. Origin is `synthetic` for a synthetic lock, `official` with `--official`, else
-`local`. `--official` needs every role, every run `complete` and class `verified`, no
+`local`. `--official` needs every role, every run `complete` and class `verified`, a `verified` assembling harness, a build of every implementation in every run, no
 `not-run` or `interrupted` cell and a standard lock; else it exits 1, lists the reasons and
 writes nothing. An existing dataset directory with other content is refused; with the same
 content the command changes nothing. `manifest.coverage.status_counts` counts the whole
@@ -155,7 +159,9 @@ has cells only for machines that have a run.
 
 ### Cell status
 
-A cell is (machine, case, threads, implementation). Rules, first match wins:
+A cell is (machine, case, threads, implementation). The runner writes attempt rows only for cells whose correctness row is `ok`; for every other cell the correctness row is the explicit outcome, and `assemble` rejects a bundle with attempts for such a cell.
+
+Rules, first match wins:
 
 1. No correctness row: `not-run` when the run is `complete`, else `interrupted`.
 2. The correctness outcome is not `ok`: that outcome (`incorrect`, `unsupported`, `timeout`, `error`).

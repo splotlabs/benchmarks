@@ -58,9 +58,13 @@ def write_run(
     arch: str | None = None,
     started: str = "2026-01-01T00:00:00Z",
     edit=None,
+    without=(),
+    snapshot_sha256=None,
 ) -> tuple[Path, str]:
     """Write a run directory under `work`, pack it as `<run_id>.tar.gz` and return (archive, digest).
 
+    `without` lists implementations that have no build in this run (their cells need no rows).
+    `snapshot_sha256` replaces the source snapshot digest of every build.
     `edit`, when given, changes the documents before they are written.
     `cells` maps (implementation, case, threads) to one of:
       None            no rows at all (the cell was not run)
@@ -77,8 +81,12 @@ def write_run(
     template = json.loads((FIXTURES / "run" / "builds.json").read_text())
     builds = {}
     for implementation in lock["implementations"]:
+        if implementation["id"] in without:
+            continue
         build = copy.deepcopy(next(b for b in template if b["implementation"] == implementation["id"]))
         build["class"] = run_class
+        if snapshot_sha256:
+            build["source"]["snapshot"]["snapshot_sha256"] = snapshot_sha256
         build["binary_sha256"] = sha256_bytes(f"{implementation['id']}{binary_seed}".encode())
         build["target"] = "synthetic-" + (arch or lock["roles"][role]["arch"])
         build["build_id"] = build_id(build)
@@ -117,7 +125,7 @@ def write_run(
         })
 
     for (implementation, case, threads), value in cells.items():
-        if value is None:
+        if value is None or implementation in without:
             continue
         reference = cases[case]["reference"]
         outcome = value if isinstance(value, str) else "ok"

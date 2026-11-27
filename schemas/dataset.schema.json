@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "splotbench.dataset/1",
   "title": "Dataset manifest (manifest.json): one assembled dataset directory",
-  "description": "dataset_id = 'ds-' + first 16 hex of sha256(canonical JSON of {lock_digest, sorted selected run ids with bundle digests, aggregation version, origin}). files lists every file of the directory except manifest.json and SHA256SUMS.",
+  "description": "dataset_id = 'ds-' + first 16 hex of sha256(canonical JSON of {lock_digest, sorted selected run ids with bundle digests, aggregation version, origin, snapshot_sha256 of the assembling harness}). files lists every file of the directory except manifest.json and SHA256SUMS.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema", "dataset_id", "campaign_id", "name", "lock_digest", "origin", "complete", "aggregation", "runs", "coverage", "files"],
