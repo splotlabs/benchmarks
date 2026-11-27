@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Tests for the `bench` command line, run as a real child process on synthetic harness copies."""
 
 import argparse

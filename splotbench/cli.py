@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Command-line interface. Each command module adds its parser with `register(subparsers)`."""
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Pinned decoder sources and builds under the declared policy optimized-source/1.
 
 `ensure(lock, role, work)` fetches each locked commit into `W/src/<id>/<commit>/`,

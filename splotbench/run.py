@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """`bench doctor`, `bench run` and `bench bundle`: preflight, the timed phase of decode-cli-wall/1 and bundles.
 
 A run lives in `W/runs/<run_id>/`: run.json, lock.json, host.json, builds.json,

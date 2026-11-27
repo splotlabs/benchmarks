@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Synthetic fixture decoder for tests. It plays a decoder and decodes nothing.
 
 Usage: decoder [--threads N] [-o PATH|-|--discard] INPUT. INPUT is JSON:

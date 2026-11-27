@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 # Explicit case-id lists. A test checks that each list follows its rule.
 #
 # full:  every stream with at least 1280x720 luma samples per frame (width * height).

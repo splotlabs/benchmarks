@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Synthetic locks, sources and inputs for the build and verify tests. Everything here is synthetic."""
 
 from __future__ import annotations

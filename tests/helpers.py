@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Shared helpers for the tests. All repositories and files they make are synthetic."""
 
 from __future__ import annotations

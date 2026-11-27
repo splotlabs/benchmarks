@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Tests for the correctness pass with the synthetic fixture decoder."""
 
 import hashlib

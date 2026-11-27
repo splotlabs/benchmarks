@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Write synthetic run directories and bundles from a compact description. All data is synthetic."""
 
 from __future__ import annotations

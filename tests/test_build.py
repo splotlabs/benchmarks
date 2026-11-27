@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Tests for `build.ensure` with the fixture decoder from synthetic file:// repositories."""
 
 import json

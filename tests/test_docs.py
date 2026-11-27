@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Tests that keep the documents true.
 
 Every `./bench` command in a fenced `sh` or `bash` block of README.md or docs/ must parse

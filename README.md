@@ -113,10 +113,16 @@ into Git. `.gitignore` excludes them.
 
 ## Licence
 
-This repository is licensed under the [MIT License](LICENSE). The decoders that the
-harness builds and the streams that it downloads are third-party material under their
-own terms. They are not part of this repository. Splot itself is source-available under
-PolyForm Noncommercial 1.0.0; the licence of this repository does not change that. Contributions
-to this repository are accepted under its MIT License, with no signing step. The SplotLabs
-[register of covered projects](https://github.com/splotlabs/.github/blob/main/COVERED-PROJECTS.md)
-states this.
+The first-party material is source-available under
+[PolyForm Noncommercial 1.0.0](LICENSE.md). It is not open source. The decoders that the
+harness builds and the streams that it downloads keep their own terms and are not part of
+this repository.
+
+## Contributing
+
+Read the [contribution policy](https://github.com/splotlabs/.github/blob/main/CONTRIBUTING.md)
+first. Other people's contributions are licensed by their authors under the unmodified MIT No
+Attribution License (MIT-0), through the
+[SplotLabs Contribution Terms](https://github.com/splotlabs/.github/blob/main/CLA.md). That
+covers only the contributor's own original material. The rest of the repository keeps its
+license.

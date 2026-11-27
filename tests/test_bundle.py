@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Tests for bundles, dataset directories and `bench validate`. Archives are built here; none is committed."""
 
 import gzip

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Load splotbench documents and validate them against `schemas/`.
 
 The validator implements only the JSON Schema keywords that the schemas use.
