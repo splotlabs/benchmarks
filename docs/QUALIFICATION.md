@@ -10,8 +10,9 @@ number from it appears in this repository.
 
 ## Native macOS arm64 record
 
-Host: macOS 27.2.1 (Darwin 27.2.0), Apple M2 Max, 12 cores (8 performance, 4 efficiency),
-32 GiB memory. The harness checkout was clean at commit
+Host: one Apple silicon Mac, native macOS arm64 (no Rosetta, no virtual machine). The
+record names no machine details, because this run is not a published result. The harness
+checkout was clean at commit
 `64ed5c1560b51302e41ffe814e4534f8dd306585`.
 
 Lock digest: `sha256:68693cfc1676440dd5d54a1cae06a4b2232d329f3e60993ed51bcf36f4efcaa3`.
