@@ -425,6 +425,57 @@ bundles or uploads by itself. The bundle holds the lock, the host and build
 manifests, the correctness and attempt rows and the logs; stream bytes stay out,
 the lock keeps their URLs and digests. Records hold relative paths only.
 
+## Repetitions and warm-ups
+
+The lock sets `warmups` and `repetitions` (`measurement`). Each cell (machine, case,
+threads, decoder) gets `warmups` warm-up attempts, then `repetitions`
+measured attempts. A warm-up is a real process run and a real row, and it never enters
+the statistics. Every cell gets the same counts. The runner never adds an attempt
+because a value looks slow or noisy; the noise flag (above) only marks it. A failed
+attempt settles its cell.
+
+## Matched-case aggregation and coverage
+
+A speedup compares two decoders on the same machine, case and thread budget, and only
+when both cells are `ok`. An aggregate is the geometric mean of those per-case ratios
+for one machine, thread budget, bit depth and ordered pair of decoders. It states
+`n_matched` (cases where both cells are `ok`), `n_expected` (cases of that bit depth)
+and the excluded cases with the reason. Cases that one decoder failed are not filled in
+and are not dropped silently. There is no mean of raw frame rates across streams. The
+exact rules are in [FORMATS.md](FORMATS.md#statistics-summary1).
+
+Coverage is the share of the expected matrix that has data. `manifest.coverage` counts
+the whole matrix by status, and `complete` says that every role has a complete run and
+no cell is `not-run` or `interrupted`. A failed cell does not make a dataset incomplete:
+it is a result. A dataset that lacks a role is incomplete, never silently smaller.
+
+## Identities: source, release, build and binary
+
+Four identities answer four questions. They are not interchangeable.
+
+| Identity | Question | Where it comes from |
+| --- | --- | --- |
+| Source | Which code? | The full commit, resolved once at lock time, and the snapshot digest of the checkout (it covers every file, so an edit shows). |
+| Release | Is that commit an upstream release? | `release` is set only when an upstream tag that matches the release pattern peels to exactly that commit. Otherwise the identity is `development`. |
+| Build | How was it built? | `build_origin`, the recipe, toolchain, target and configuration, in `build_id`. |
+| Binary | Which executable ran? | The SHA-256 of the executable and of project-built libraries, checked before verification and before each run session. |
+
+Rules that follow:
+
+- A `source-release` build is a build of release **source** by this harness with the
+  policy `optimized-source/1`. It is not the release asset that the upstream project
+  publishes. The harness has no path that downloads or runs an upstream binary
+  (`upstream-release-asset` is reserved and refused). Only that origin may be called an
+  official release binary.
+- `--version` output is raw text for the detail view. It is not proof of a release.
+- Unknown provenance is not verified data. A checkout that is modified, not at the locked
+  commit, or without Git has class `development`. A synthetic lock gives class
+  `synthetic`. Only `verified` data (clean Git, commit equal to the lock) can be
+  official. `bench assemble --official` refuses everything else.
+- Two builds of one source (for example arm64 and x86-64) have different binary
+  digests and build ids, and both are valid. The identities show the difference. They
+  do not promise byte-identical compiler output.
+
 ## Fixture decoder
 
 The `fixture` adapter runs `tests/fixture_decoder.py`, a synthetic child process
