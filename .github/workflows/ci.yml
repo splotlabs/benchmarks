@@ -27,9 +27,18 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: python -m unittest discover -s tests -v
-      - name: Check the published directory
+      - name: Check the published directory and that the push changed no published dataset
         if: github.event_name != 'pull_request'
-        run: ./bench validate published
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # A push to main: compare with the commit before the push. This reports a direct
+          # push that changed a published dataset; only branch protection can prevent one.
+          if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+            ./bench validate published --immutable-since "$BEFORE"
+          else
+            ./bench validate published
+          fi
       - name: Check the published directory and that published datasets never change
         if: github.event_name == 'pull_request'
         env:
