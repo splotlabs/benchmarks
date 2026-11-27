@@ -39,13 +39,17 @@ def recipe(src: Path, arch: str) -> dict:
 
 
 def capabilities(binary: Path) -> None:
-    options = ("--input", "--output", "--muxer", "yuv", "--threads", "--filmgrain", "--quiet")
+    options = ("--input", "--output", "--muxer", "yuv", "null", "--threads", "--filmgrain", "--quiet")
     require_options(binary, [str(binary), "--help"], options)
 
 
-def command(binary: Path, input: Path, threads: int, sink: str) -> list[str]:
-    # `--muxer yuv` is required: without it, `-o /dev/null` selects the null muxer (tools/output/output.c).
-    return [str(binary), "-q", "-i", str(input), "--muxer", "yuv", "-o", sink, "--threads", str(threads), "--filmgrain", "1"]
+def verify_command(binary: Path, input: Path, threads: int) -> list[str]:
+    return [str(binary), "-q", "-i", str(input), "--muxer", "yuv", "-o", "-", "--threads", str(threads), "--filmgrain", "1"]
+
+
+def timed_command(binary: Path, input: Path, threads: int) -> list[str]:
+    # `-q`: without it dav2d prints a status line for every frame.
+    return [str(binary), "-q", "-i", str(input), "--muxer", "null", "--threads", str(threads), "--filmgrain", "1"]
 
 
 def version(binary: Path) -> str | None:

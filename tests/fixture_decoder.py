@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Synthetic fixture decoder for tests. It plays a decoder and decodes nothing.
 
-Usage: decoder [--threads N] [-o PATH|-] INPUT. INPUT is JSON:
+Usage: decoder [--threads N] [-o PATH|-|--discard] INPUT. INPUT is JSON:
 {"mode": ..., "fill": byte value, "bytes": output size, "frames": count, "pid_file": path}.
 Modes: ok, wrong (other bytes), short (half the bytes), long (one byte more), fail (exit 3),
 unsupported, unsupported-option, hang, spawn-hang (start a descendant, write both pids, hang).
@@ -17,7 +17,7 @@ import time
 
 def main(argv: list[str]) -> int:
     if "--help" in argv:
-        print("usage: decoder [--threads N] [-o PATH|-] INPUT  (synthetic fixture decoder)")
+        print("usage: decoder [--threads N] [-o PATH|-|--discard] INPUT  (synthetic fixture decoder)")
         return 0
     if "--version" in argv:
         print("fixture-decoder 1.0 (synthetic)")
@@ -29,6 +29,8 @@ def main(argv: list[str]) -> int:
             next(words)
         elif word == "-o":
             sink = next(words)
+        elif word == "--discard":
+            sink = None
         else:
             source = word
     with open(source) as file:
@@ -51,9 +53,10 @@ def main(argv: list[str]) -> int:
         time.sleep(3600)
     size = {"short": spec["bytes"] // 2, "long": spec["bytes"] + 1}.get(mode, spec["bytes"])
     fill = (spec["fill"] + (mode == "wrong")) % 256
-    output = sys.stdout.buffer if sink == "-" else open(sink, "wb")
-    output.write(bytes([fill]) * size)
-    output.flush()
+    if sink is not None:
+        output = sys.stdout.buffer if sink == "-" else open(sink, "wb")
+        output.write(bytes([fill]) * size)
+        output.flush()
     print(f"fixture: decoded {spec['frames']} frames", file=sys.stderr)
     return 0
 

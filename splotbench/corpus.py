@@ -15,6 +15,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+from . import build
 from .provenance import HARNESS_ROOT
 from .util import EXIT_PREREQUISITE, BenchError, canonical_json, sha256_bytes, sha256_file
 
@@ -258,20 +259,26 @@ def _prepare(args: argparse.Namespace) -> int:
     plan.check_role(lock, args.role)
     paths = ensure(lock, args.work, offline=args.offline)
     print(f"corpus: {len(paths)} streams verified in {Path(args.work) / 'corpus'}")
+    for manifest in build.ensure(lock, args.role, args.work, args.jobs, offline=args.offline):
+        print(f"build: {manifest['implementation']} {manifest['build_id']} in {manifest['binary_path']}")
     return 0
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
     parser = subparsers.add_parser(
         "prepare",
-        help="fetch and verify the corpus of a lock",
+        help="fetch and verify the corpus, then fetch and build the pinned decoders",
         description="Check the lock, check that ROLE is in it, then download each stream of the lock to "
-        "WORK/corpus and verify its size and SHA-256. A cached file is verified again. "
-        "With --offline no connection is opened and a missing or wrong stream is an error. "
-        "Today this is the only stage; the build stage is added later.",
+        "WORK/corpus and verify its size and SHA-256. A cached file is verified again. Then fetch each "
+        "locked commit to WORK/src and build it to WORK/build, or reuse a finished build "
+        "(see docs/METHODOLOGY.md). With --offline no connection is opened: a missing or wrong stream, "
+        "a missing checkout or a missing build is an error.",
     )
     parser.add_argument("--lock", required=True, type=Path, metavar="LOCK")
     parser.add_argument("--role", required=True, metavar="ROLE")
     parser.add_argument("--work", required=True, type=Path, metavar="W")
     parser.add_argument("--offline", action="store_true", help="never open a connection")
+    parser.add_argument(
+        "--jobs", type=int, metavar="N", help="parallel build jobs (default: half of the logical CPUs)"
+    )
     parser.set_defaults(handler=_prepare)

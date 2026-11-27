@@ -155,7 +155,7 @@ def _assemble(plan: dict, base: Path, harness: dict, resolved: list[dict] | None
             "order": {"policy": "seeded-rotation/1", "seed": plan["order_seed"]},
             "noise_max_range_permille": plan["noise_max_range_permille"],
             "film_grain": "apply",
-            "output_policy": "raw-discard",
+            "output_policy": "decode-discard",
             "frame_delay": "decoder-default",
             "timing_boundary": "process-wall",
         },

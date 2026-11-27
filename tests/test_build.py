@@ -44,13 +44,13 @@ class FixtureBuildTest(unittest.TestCase):
         directory = self.work / "build" / "fixture-a" / self.commit
         self.assertEqual(schema.validate(manifest), [])
         self.assertEqual(json.loads((directory / "build.json").read_text()), manifest)
-        self.assertTrue((directory / "build.log").read_text().startswith("$ cp "))
+        self.assertTrue((directory / "build.log").read_text().startswith("$ install "))
         self.assertEqual(manifest["class"], "synthetic")
         self.assertEqual(manifest["binary_path"], f"build/fixture-a/{self.commit}/decoder")
         self.assertEqual(manifest["source"]["commit"], self.commit)
         self.assertEqual(manifest["source"]["build_origin"], "source-development")
         self.assertFalse(manifest["source"]["snapshot"]["dirty"])
-        self.assertEqual(manifest["configuration"]["arguments"], ["cp", "<src>/decoder.py", "<build>/decoder"])
+        self.assertEqual(manifest["configuration"]["arguments"], ["install", "-m", "755", "<src>/decoder.py", "<build>/decoder"])
         self.assertEqual(manifest["version_output"], "fixture-decoder 1.0 (synthetic)")
         self.assertEqual(manifest["build_id"], provenance.build_id(manifest))
         # Only allow-listed variables are recorded.

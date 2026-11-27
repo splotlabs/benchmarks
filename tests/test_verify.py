@@ -4,6 +4,7 @@
 import hashlib
 import json
 import os
+import shutil
 import tempfile
 import time
 import unittest
@@ -137,6 +138,43 @@ class VerifyTest(unittest.TestCase):
         done = bench(ROOT, *args, "--case", "fixture-ok")
         self.assertEqual((done.returncode, done.stdout), (0, "ok: fixture-a fixture-ok threads=1\n"))
 
+
+
+class PrepareThenVerifyTest(unittest.TestCase):
+    """`bench prepare` (corpus and build stage) then `bench verify`, with the fixture adapter."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        url, commit = fb.decoder_repo(self.root / "fixture-a-source")
+        self.implementation = fb.implementation("fixture-a", url, commit)
+
+    def lock_file(self, work: Path) -> Path:
+        path = self.root / "lock.json"
+        path.write_text(json.dumps(fb.lock([self.implementation], [fb.case(work, "fixture-ok", "ok")])))
+        return path
+
+    def test_prepare_then_verify_then_offline(self):
+        work = self.root / "work"
+        lock = self.lock_file(work)
+        common = ["--lock", str(lock), "--role", fb.native_role(), "--work", str(work)]
+        done = bench(ROOT, "prepare", *common, "--jobs", "1")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertRegex(done.stdout, r"build: fixture-a bld-[0-9a-f]{16} in build/fixture-a/")
+        self.assertEqual(bench(ROOT, "prepare", *common, "--offline").returncode, 0)
+        done = bench(ROOT, "verify", *common)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(done.stdout.count("ok: fixture-a fixture-ok"), 2)
+
+    def test_offline_without_a_checkout_fails_without_fetching(self):
+        work = self.root / "work"
+        lock = self.lock_file(work)
+        shutil.rmtree(self.root / "fixture-a-source")  # a fetch attempt could not succeed either
+        done = bench(ROOT, "prepare", "--lock", str(lock), "--role", fb.native_role(), "--work", str(work), "--offline")
+        self.assertEqual(done.returncode, 3, done.stderr)
+        self.assertIn("offline: the fixture-a checkout", done.stderr)
+        self.assertFalse((work / "src").exists())
 
 if __name__ == "__main__":
     unittest.main()

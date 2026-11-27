@@ -17,10 +17,11 @@ HELP = {
     "splot": "Usage: splot decode [OPTIONS] <INPUT>\n      --output-format <OUTPUT_FORMAT>\n"
     "          [possible values: y4m, raw, hash, null]\n  -o, --output <OUTPUT>\n      --threads <THREADS>\n",
     "dav2d": " --input/-i $file:        input file\n --output/-o $file:       output file\n"
-    " --muxer $name:           force muxer type\n                          (md5, yuv, y4m2;\n"
+    " --muxer $name:           force muxer type\n                          ('md5', 'yuv', 'yuv4mpeg2', or 'null';\n"
     " --quiet/-q:              disable status messages\n --threads $num:          number of threads\n"
     " --filmgrain $bool:       enable film grain application\n",
     "avm": "            --rawvideo                Output raw YUV frames\n"
+    "            --noblit                  Don't process the decoded frames\n"
     "            --summary                 Show timing summary\n"
     "  -o <arg>, --output=<arg>          Output file name pattern (see below)\n"
     "  -t <arg>, --threads=<arg>         Max threads to use\n\nIncluded decoders:\n\n"
@@ -40,24 +41,31 @@ def canned(directory: Path, text: str) -> Path:
 class CommandTest(unittest.TestCase):
     def test_commands_for_the_correctness_pass(self):
         self.assertEqual(
-            SPLOT.command(BIN, INPUT, 4, adapters.STDOUT),
+            SPLOT.verify_command(BIN, INPUT, 4),
             [str(BIN), "decode", str(INPUT), "--output-format", "raw", "-o", "-", "--threads", "4"],
         )
         self.assertEqual(
-            DAV2D.command(BIN, INPUT, 4, adapters.STDOUT),
+            DAV2D.verify_command(BIN, INPUT, 4),
             [str(BIN), "-q", "-i", str(INPUT), "--muxer", "yuv", "-o", "-", "--threads", "4", "--filmgrain", "1"],
         )
         self.assertEqual(
-            AVM.command(BIN, INPUT, 4, adapters.STDOUT),
+            AVM.verify_command(BIN, INPUT, 4),
             [str(BIN), "--rawvideo", "--summary", "-o", "-", "--threads=4", str(INPUT)],
         )
 
-    def test_timed_command_differs_only_in_the_sink(self):
-        for adapter in (SPLOT, DAV2D, AVM, adapters.get("fixture")):
-            verified = adapter.command(BIN, INPUT, 1, adapters.STDOUT)
-            timed = adapter.command(BIN, INPUT, 1, adapters.DISCARD)
-            self.assertEqual([a for a, b in zip(verified, timed) if a != b], ["-"])
-            self.assertEqual([b for a, b in zip(verified, timed) if a != b], ["/dev/null"])
+    def test_timed_commands_discard_each_picture(self):
+        self.assertEqual(
+            SPLOT.timed_command(BIN, INPUT, 4),
+            [str(BIN), "decode", str(INPUT), "--output-format", "null", "--threads", "4"],
+        )
+        self.assertEqual(
+            DAV2D.timed_command(BIN, INPUT, 4),
+            [str(BIN), "-q", "-i", str(INPUT), "--muxer", "null", "--threads", "4", "--filmgrain", "1"],
+        )
+        self.assertEqual(AVM.timed_command(BIN, INPUT, 4), [str(BIN), "--noblit", "--summary", "--threads=4", str(INPUT)])
+        self.assertEqual(
+            adapters.get("fixture").timed_command(BIN, INPUT, 4), [str(BIN), "--threads", "4", "--discard", str(INPUT)]
+        )
 
     def test_unknown_adapter(self):
         with self.assertRaisesRegex(BenchError, "unknown"):

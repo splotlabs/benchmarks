@@ -16,7 +16,7 @@ from splotbench.util import canonical_json, sha256_bytes
 HERE = Path(__file__).resolve().parent
 DECODER = HERE / "fixture_decoder.py"
 TEMPLATE = json.loads((HERE / "fixtures" / "lock.json").read_text())
-USAGE = "usage: decoder [--threads N] [-o PATH|-] INPUT  (synthetic fixture decoder)"
+USAGE = "usage: decoder [--threads N] [-o PATH|-|--discard] INPUT  (synthetic fixture decoder)"
 # 64x64, 8 bit, 4:2:0: 4096 luma + 2 * 1024 chroma bytes per frame, 2 frames.
 RAW_BYTES = 12288
 

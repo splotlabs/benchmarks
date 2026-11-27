@@ -47,11 +47,16 @@ def recipe(src: Path, arch: str) -> dict:
 
 
 def capabilities(binary: Path) -> None:
-    require_options(binary, [str(binary), "--help"], ("--rawvideo", "--summary", "--output", "--threads"))
+    options = ("--rawvideo", "--noblit", "--summary", "--output", "--threads")
+    require_options(binary, [str(binary), "--help"], options)
 
 
-def command(binary: Path, input: Path, threads: int, sink: str) -> list[str]:
-    return [str(binary), "--rawvideo", "--summary", "-o", sink, f"--threads={threads}", str(input)]
+def verify_command(binary: Path, input: Path, threads: int) -> list[str]:
+    return [str(binary), "--rawvideo", "--summary", "-o", "-", f"--threads={threads}", str(input)]
+
+
+def timed_command(binary: Path, input: Path, threads: int) -> list[str]:
+    return [str(binary), "--noblit", "--summary", f"--threads={threads}", str(input)]
 
 
 def version(binary: Path) -> str | None:

@@ -87,9 +87,14 @@ def role_arch(lock: dict, role: str) -> str:
     return arch
 
 
-def ensure(lock: dict, role: str, work: Path, jobs: int | None = None) -> list[dict]:
-    """Fetch, build or reuse every implementation of the lock for `role`. Return one manifest each."""
+def ensure(lock: dict, role: str, work: Path, jobs: int | None = None, *, offline: bool = False) -> list[dict]:
+    """Fetch, build or reuse every implementation of the lock for `role`. Return one manifest each.
+
+    With `offline` nothing is fetched or built: every checkout and finished build must be present.
+    """
     work = Path(work)
+    if jobs is not None and jobs < 1:
+        raise BenchError(f"--jobs {jobs} is not a positive number of build jobs.", 2)
     arch = role_arch(lock, role)
     found = [name for name in POLICY_ENV if name in os.environ]
     if found:
@@ -99,14 +104,7 @@ def ensure(lock: dict, role: str, work: Path, jobs: int | None = None) -> list[d
             EXIT_PREREQUISITE,
         )
     pairs = [(implementation, adapter_for(lock, implementation)) for implementation in lock["lock"]["implementations"]]
-    for implementation, adapter in pairs:
-        for tool in adapter.tools(arch):
-            if shutil.which(tool) is None:
-                raise BenchError(
-                    f"{tool} is not on PATH; the {implementation['id']} build needs it. Install it and run again.",
-                    EXIT_PREREQUISITE,
-                )
-    return [_build(lock, implementation, adapter, arch, work, jobs or default_jobs()) for implementation, adapter in pairs]
+    return [_build(lock, entry, adapter, arch, work, jobs if jobs is not None else default_jobs(), offline) for entry, adapter in pairs]
 
 
 def _fetch(implementation: dict, src: Path) -> None:
@@ -156,9 +154,15 @@ def _first_line(argv: list[str], cwd: Path) -> str:
     return next((line.strip() for line in text.splitlines() if line.strip()), "")
 
 
-def _build(lock: dict, implementation: dict, adapter, arch: str, work: Path, jobs: int) -> dict:
+def _offline_error(what: str, path: Path) -> BenchError:
+    return BenchError(f"offline: {what} is missing at {path}. Run `bench prepare` without --offline first.", EXIT_PREREQUISITE)
+
+
+def _build(lock: dict, implementation: dict, adapter, arch: str, work: Path, jobs: int, offline: bool) -> dict:
     src, out = source_dir(work, implementation), build_dir(work, implementation)
     commit = implementation["commit"]
+    if offline and not src.exists():
+        raise _offline_error(f"the {implementation['id']} checkout of {commit}", src)
     _fetch(implementation, src)
     source = _clean_snapshot(src, commit)
     recipe = adapter.recipe(src, arch)
@@ -173,6 +177,14 @@ def _build(lock: dict, implementation: dict, adapter, arch: str, work: Path, job
         if recorded["source"]["snapshot"] == source and recorded["configuration"] == configuration:
             provenance.check_binary(work, recorded)
             return recorded
+    if offline:
+        raise _offline_error(f"a finished {implementation['id']} build of this snapshot and configuration", manifest_path)
+    for tool in adapter.tools(arch):
+        if shutil.which(tool) is None:
+            raise BenchError(
+                f"{tool} is not on PATH; the {implementation['id']} build needs it. Install it and run again.",
+                EXIT_PREREQUISITE,
+            )
     # Another snapshot or configuration, or an unfinished build: start from an empty build directory.
     shutil.rmtree(out, ignore_errors=True)
     out.mkdir(parents=True)

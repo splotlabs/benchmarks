@@ -14,6 +14,7 @@ from unittest import mock
 from helpers import ROOT, bench, isolate_git, restore_git
 from splotbench import corpus, plan, schema
 from splotbench.util import BenchError
+from fixture_builds import native_role
 from synthetic_campaign import HARNESS, STREAMS, make_plan
 
 
@@ -231,11 +232,12 @@ class PrepareCommandTest(Campaign):
         return path
 
     def test_prepare_then_offline_prepare(self):
-        lock = self.lock_file()
-        done = bench(ROOT, "prepare", "--lock", str(lock), "--role", "arm64", "--work", str(self.work))
+        lock, role = self.lock_file(), native_role()
+        done = bench(ROOT, "prepare", "--lock", str(lock), "--role", role, "--work", str(self.work), "--jobs", "1")
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertIn("2 streams verified", done.stdout)
-        done = bench(ROOT, "prepare", "--lock", str(lock), "--role", "arm64", "--work", str(self.work), "--offline")
+        self.assertEqual([line.split()[:2] for line in done.stdout.splitlines()[1:]], [["build:", "fixture-a"], ["build:", "fixture-b"]])
+        done = bench(ROOT, "prepare", "--lock", str(lock), "--role", role, "--work", str(self.work), "--offline")
         self.assertEqual(done.returncode, 0, done.stderr)
 
     def test_offline_without_cache_exits_3(self):

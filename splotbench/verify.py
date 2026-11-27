@@ -19,7 +19,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from . import adapters, build, bundle, corpus, provenance, schema
+from . import build, bundle, corpus, provenance, schema
 from .util import EXIT_FAILURE, EXIT_PREREQUISITE, BenchError, canonical_json, sha256_file
 
 CHUNK = 1 << 20
@@ -191,7 +191,7 @@ def run(
                     outcome, code, detail, result = "unsupported", None, missing, {"bytes": None, "sha256": None}
                 else:
                     log = _next_log(logs, item["id"], budget)
-                    result = run_decode(adapter.command(binary, inputs[item["id"]], budget, adapters.STDOUT), log, timeout_s)
+                    result = run_decode(adapter.verify_command(binary, inputs[item["id"]], budget), log, timeout_s)
                     outcome, code, detail = _judge(adapter, item, result, log, timeout_s)
                 row = {
                     "schema": "splotbench.correctness/1",

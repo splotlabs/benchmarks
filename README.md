@@ -33,7 +33,8 @@ Run the commands from the repository root.
 ./bench validate PATH...  # check JSON and JSONL files, bundles and dataset directories
 ./bench lock PLAN.toml -o LOCK.json          # resolve a campaign plan once into a lock
 ./bench matrix --lock LOCK [--role ROLE]     # list every expected cell
-./bench prepare --lock LOCK --role ROLE --work W [--offline]   # fetch and verify the corpus
+./bench prepare --lock LOCK --role ROLE --work W [--jobs N] [--offline]
+                          # fetch and verify the corpus, fetch and build the pinned decoders
 ./bench verify --lock L --role R --work W   # untimed correctness pass of the prepared builds
 ./bench assemble --lock LOCK.json BUNDLE... -o OUT [--select ROLE=RUN_ID] [--official]
                           # check bundles and write OUT/datasets/<dataset_id>/

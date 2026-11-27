@@ -45,11 +45,17 @@ def recipe(src: Path, arch: str) -> dict:
 
 
 def capabilities(binary: Path) -> None:
-    require_options(binary, [str(binary), "decode", "--help"], ("--output-format", "raw", "-o", "--threads"))
+    options = ("--output-format", "raw", "null", "-o", "--threads")
+    require_options(binary, [str(binary), "decode", "--help"], options)
 
 
-def command(binary: Path, input: Path, threads: int, sink: str) -> list[str]:
-    return [str(binary), "decode", str(input), "--output-format", "raw", "-o", sink, "--threads", str(threads)]
+def verify_command(binary: Path, input: Path, threads: int) -> list[str]:
+    return [str(binary), "decode", str(input), "--output-format", "raw", "-o", "-", "--threads", str(threads)]
+
+
+def timed_command(binary: Path, input: Path, threads: int) -> list[str]:
+    # The null format runs the discard path: film grain applied, no raw serialisation.
+    return [str(binary), "decode", str(input), "--output-format", "null", "--threads", str(threads)]
 
 
 def version(binary: Path) -> str | None:

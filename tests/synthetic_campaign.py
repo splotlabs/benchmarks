@@ -18,6 +18,8 @@ HARNESS = {
     "snapshot_sha256": "sha256:" + "3" * 64,
     "submodules": [],
 }
+# The fixture adapter builds this script, so `bench prepare` can build the synthetic implementations.
+DECODER = (ROOT / "tests" / "fixture_decoder.py").read_bytes()
 STREAMS = {"synthetic-8bit": (8, b"synthetic stream one " * 20), "synthetic-10bit": (10, b"synthetic stream two " * 30)}
 
 
@@ -64,8 +66,8 @@ def make_plan(directory: Path, *, replace: dict[str, str] | None = None, select_
     directory.mkdir(parents=True, exist_ok=True)
     if not (directory / "corpus.toml").exists():
         write_corpus(directory)
-    repo_a = directory / "repo-a" if (directory / "repo-a").exists() else make_repo(directory / "repo-a", {"a": b"a"})
-    repo_b = directory / "repo-b" if (directory / "repo-b").exists() else make_repo(directory / "repo-b", {"b": b"b"})
+    repo_a = directory / "repo-a" if (directory / "repo-a").exists() else make_repo(directory / "repo-a", {"a": b"a", "decoder.py": DECODER})
+    repo_b = directory / "repo-b" if (directory / "repo-b").exists() else make_repo(directory / "repo-b", {"b": b"b", "decoder.py": DECODER})
     git(repo_a, "branch", "-M", "main")
     git(repo_b, "branch", "-M", "main")
     text = (ROOT / "tests/fixtures/plan-synthetic.toml").read_text()

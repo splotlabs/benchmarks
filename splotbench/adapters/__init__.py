@@ -4,7 +4,8 @@
 recipe(src, arch)        build recipe: steps, binary, lock files, toolchain, configuration
 tools(arch)              programs the recipe needs
 capabilities(binary)     check the real binary for every option that `command` passes
-command(binary, input, threads, sink)   exact argv of the raw-output decode
+verify_command(binary, input, threads)  argv of the correctness pass: raw output on stdout
+timed_command(binary, input, threads)   argv of the timed run: decode, film grain, discard each picture
 version(binary)          raw version text; never release proof
 parse_frames(stderr)     frame count that the decode prints, or None
 unsupported(stderr)      True when the decoder says it cannot decode the stream or an option
@@ -20,9 +21,6 @@ from pathlib import Path
 
 from ..util import EXIT_PREREQUISITE, BenchError
 
-# Sinks of `command`: the timed phase discards the output, the correctness pass reads stdout.
-DISCARD = "/dev/null"
-STDOUT = "-"
 HELP_TIMEOUT_S = 60
 
 
