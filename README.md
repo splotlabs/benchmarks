@@ -65,7 +65,7 @@ with Python 3.11 and 3.14.
 | `schemas/` | JSON Schema files: the source of truth for every data format. |
 | `docs/` | Format documentation and the publishing procedure. |
 | `tests/` | Unit tests and synthetic fixtures (`tests/fixtures/`). |
-| `.github/workflows/` | CI: unit tests only. No benchmark runs, schedules or publication. |
+| `.github/workflows/` | CI: unit tests and the checks of committed published data. No benchmark runs, schedules or publication. |
 
 Downloaded corpora, builds, raw runs, bundles and generated datasets do not go
 into Git. `.gitignore` excludes them.

@@ -8,7 +8,9 @@ reviews the diff and opens a pull request. Nothing here runs unless the owner st
 from __future__ import annotations
 
 import argparse
+import contextlib
 import fcntl
+import filecmp
 import hashlib
 import json
 import os
@@ -73,7 +75,7 @@ def _refuse(manifest: dict, allow_local: bool, promote: bool, target: Path) -> N
         if not allow_local:
             raise BenchError(f"{name} has origin {origin}. Only official datasets are published; "
                              "use --allow-local with --to for a personal folder.")  # fmt: skip
-        if target.resolve() == DEFAULT_TARGET.resolve():
+        if target.resolve().is_relative_to(DEFAULT_TARGET.resolve()):
             raise BenchError(f"{name} has origin {origin}. A local dataset never goes into the published/ directory "
                              "of the harness checkout; give another folder with --to.")  # fmt: skip
     if not manifest["complete"]:
@@ -92,21 +94,24 @@ def _read_index(target: Path) -> dict | None:
     return schema.loads(path.read_bytes())
 
 
-def _tree(directory: Path) -> dict[str, bytes]:
-    return {p.relative_to(directory).as_posix(): p.read_bytes() for p in sorted(directory.rglob("*")) if p.is_file()}
+def _names(directory: Path) -> set[str]:
+    return {p.relative_to(directory).as_posix() for p in directory.rglob("*") if p.is_file()}
+
+
+@contextlib.contextmanager
+def _io(action: str, path: Path, state: str):
+    try:
+        yield
+    except OSError as error:
+        raise BenchError(f"cannot {action} {error.filename or path}: {error.strerror}. {state}") from None
 
 
 def _require_same(source: Path, final: Path) -> None:
     """Return when `final` holds the same bytes as `source`. A difference raises and names the first file."""
-    old, new = _tree(final), _tree(source)
-    for path in sorted(old.keys() | new.keys()):
-        if old.get(path) != new.get(path):
+    for path in sorted(_names(final) | _names(source)):
+        if not (final / path).is_file() or not (source / path).is_file() or not filecmp.cmp(final / path, source / path, shallow=False):
             raise BenchError(f"{final} exists with different bytes: {path} differs. Datasets never change. "
                              "Assemble again to get a new dataset id; do not edit the published directory.")  # fmt: skip
-
-
-def _copy(source: Path, destination: Path) -> None:
-    shutil.copyfile(source, destination)
 
 
 def _install(source: Path, target: Path, dataset_id: str) -> bool:
@@ -121,16 +126,16 @@ def _install(source: Path, target: Path, dataset_id: str) -> bool:
     temporary = final.with_name(f".{dataset_id}.tmp")
     shutil.rmtree(temporary, ignore_errors=True)
     try:
-        for path in sorted(p for p in source.rglob("*") if p.is_file()):
-            copy = temporary / path.relative_to(source)
-            copy.parent.mkdir(parents=True, exist_ok=True)
-            _copy(path, copy)
+        with _io("copy the dataset to", temporary, "Nothing was published."):
+            for path in sorted(p for p in source.rglob("*") if p.is_file()):
+                copy = temporary / path.relative_to(source)
+                copy.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(path, copy)
         problems = validate.dataset_problems(temporary)
         if problems:
             raise BenchError("the copy does not match SHA256SUMS; nothing was published:\n  " + "\n  ".join(problems))
-        os.rename(temporary, final)
-    except OSError as error:
-        raise BenchError(f"cannot copy the dataset into {target}: {error.strerror}. Nothing was published.") from None
+        with _io("move the copy to", final, "Nothing was published."):
+            os.rename(temporary, final)
     finally:
         shutil.rmtree(temporary, ignore_errors=True)
     return True
@@ -158,9 +163,9 @@ def publish(directory: Path, target: Path, *, dry_run: bool = False, promote: bo
         out(f"{target / 'index.json'}: {line}")
         return 0
 
-    target.mkdir(parents=True, exist_ok=True)
-    (target / "datasets").mkdir(exist_ok=True)
-    descriptor = os.open(target, os.O_RDONLY)
+    with _io("create", target, "Nothing was published."):
+        (target / "datasets").mkdir(parents=True, exist_ok=True)
+        descriptor = os.open(target, os.O_RDONLY)
     try:  # one publication at a time into this target
         try:
             fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -170,7 +175,9 @@ def publish(directory: Path, target: Path, *, dry_run: bool = False, promote: bo
         out(f"{'copied' if installed else 'already present'} {final}")
         new, line = index_change(_read_index(target), entry, promote)
         if new is not None:
-            write_atomic(target / "index.json", index_bytes(new))
+            with _io("write", target / "index.json",
+                     f"The dataset directory {final} is complete but not listed; run the same command again."):
+                write_atomic(target / "index.json", index_bytes(new))
         out(f"{target / 'index.json'}: {line}" + ("" if new is not None else " (not written)"))
     finally:
         os.close(descriptor)

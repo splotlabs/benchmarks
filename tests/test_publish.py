@@ -11,15 +11,25 @@ import io
 import json
 import os
 import shutil
+import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
-from helpers import ROOT
+from helpers import ROOT, git, isolate_git, restore_git
 from splotbench import assemble, cli, publish, schema, validate
 from splotbench.util import BenchError
 from test_assemble import ARM, HARNESS, X86, X86_RUN, Base, lock_with
 
 OTHER_HARNESS = {**HARNESS, "snapshot_sha256": "sha256:" + "b2" * 32}  # another harness gives another dataset id
+
+
+def setUpModule():
+    isolate_git()
+
+
+def tearDownModule():
+    restore_git()
 
 
 def official_lock():
@@ -97,15 +107,15 @@ class PublishTest(PublishBase):
     def test_failure_in_the_middle_of_the_copy_leaves_no_directory_and_the_old_index(self):
         first, second = self.dataset(), self.dataset(OTHER_HARNESS)
         self.publish(first, promote=True)
-        before, calls = self.files(), []
+        before, calls, real = self.files(), [], shutil.copyfile
 
         def broken(source, destination):
             calls.append(destination)
             if len(calls) == 3:
                 raise OSError(28, "No space left on device")
-            shutil.copyfile(source, destination)
+            real(source, destination)
 
-        with mock.patch.object(publish, "_copy", broken), self.assertRaises(BenchError) as raised:
+        with mock.patch.object(shutil, "copyfile", broken), self.assertRaises(BenchError) as raised:
             self.publish(second, promote=True)
         self.assertIn("Nothing was published", str(raised.exception))
         self.assertEqual(len(calls), 3)
@@ -117,15 +127,77 @@ class PublishTest(PublishBase):
     def test_copy_that_does_not_match_the_checksums_is_not_installed(self):
         source = self.dataset()
 
+        real = shutil.copyfile
+
         def damaged(src, destination):
-            shutil.copyfile(src, destination)
+            real(src, destination)
             if destination.name == "summary.csv":
                 destination.write_bytes(b"x")
 
-        with mock.patch.object(publish, "_copy", damaged), self.assertRaises(BenchError) as raised:
+        with mock.patch.object(shutil, "copyfile", damaged), self.assertRaises(BenchError) as raised:
             self.publish(source)
         self.assertIn("SHA256SUMS", str(raised.exception))
         self.assertEqual(self.files(), {})
+
+    def test_index_write_error_leaves_a_complete_unlisted_directory_and_a_rerun_completes_it(self):
+        source = self.dataset()
+        with mock.patch.object(publish, "write_atomic", side_effect=OSError(28, "No space left on device")):
+            with self.assertRaises(BenchError) as raised:
+                self.publish(source)
+        self.assertIn("index.json", str(raised.exception))
+        self.assertIn("run the same command again", str(raised.exception))
+        self.assertEqual(raised.exception.exit_code, 1)
+        self.assertEqual(validate.dataset_problems(self.target / "datasets" / source.name), [])
+        self.assertFalse((self.target / "index.json").exists())
+        self.assertIn("index.json: missing or not a regular file", validate.published_problems(self.target))
+        self.assertEqual(self.publish(source), 0)  # the rerun lists the directory that is already there
+        self.assertEqual([e["dataset_id"] for e in self.index()["datasets"]], [source.name])
+        self.assertEqual(validate.published_problems(self.target), [])
+
+    def test_unlisted_directory_after_the_rename_is_reported_with_an_index_present(self):
+        first, second = self.dataset(), self.dataset(OTHER_HARNESS)
+        self.publish(first)
+        with mock.patch.object(publish, "write_atomic", side_effect=OSError(28, "No space left on device")):
+            with self.assertRaises(BenchError):
+                self.publish(second)
+        self.assertEqual(validate.published_problems(self.target), [f"datasets/{second.name}: not listed in index.json"])
+        self.assertEqual(self.publish(second), 0)
+        self.assertEqual(validate.published_problems(self.target), [])
+
+    def test_unusable_target_is_an_error_message_not_a_traceback(self):
+        source = self.dataset()
+        (self.tmp / "file").write_text("")
+        with self.assertRaises(BenchError) as raised:
+            self.publish(source, target=self.tmp / "file" / "x")
+        self.assertEqual(raised.exception.exit_code, 1)
+        self.assertIn("cannot create", str(raised.exception))
+        self.assertIn("Nothing was published", str(raised.exception))
+
+    def test_symbolic_link_inside_the_dataset_is_refused(self):
+        source = self.dataset()
+        (source / "extra.json").symlink_to(source / "lock.json")
+        self.refused(source, "not a regular file")
+
+    def test_index_that_is_a_json_array_is_refused(self):
+        source = self.dataset()
+        self.target.mkdir()
+        (self.target / "index.json").write_text("[]\n")
+        with self.assertRaises(BenchError) as raised:
+            self.publish(source)
+        self.assertIn("invalid", str(raised.exception))
+        self.assertEqual(sorted(self.files()), ["index.json"])
+
+    def test_dry_run_against_a_populated_target_changes_nothing(self):
+        first, second = self.dataset(), self.dataset(OTHER_HARNESS)
+        self.publish(first, promote=True)
+
+        def listing():
+            return {p.relative_to(self.target).as_posix(): (p.stat().st_size, p.stat().st_mtime_ns, p.is_dir())
+                    for p in sorted(self.target.rglob("*"))}  # fmt: skip
+
+        before = listing()
+        self.assertEqual(self.publish(second, dry_run=True, promote=True), 0)
+        self.assertEqual(listing(), before)
 
     def test_listed_id_with_different_content_is_refused_before_any_copy(self):
         source = self.dataset()
@@ -180,6 +252,7 @@ class PublishTest(PublishBase):
         default = self.tmp / "checkout" / "published"
         with mock.patch.object(publish, "DEFAULT_TARGET", default):
             self.refused(local, "never goes into the published/", target=default, allow_local=True)
+            self.refused(local, "never goes into the published/", target=default / "mine", allow_local=True)
         self.assertEqual(self.publish(local, allow_local=True), 0)
         self.assertEqual(self.index()["datasets"][0]["origin"], "local")
 
@@ -262,6 +335,48 @@ class PublishedDirectoryTest(PublishBase):
         (self.target / "index.json").write_bytes(publish.index_bytes(document))
         self.assertEqual(self.problems(), [])
 
+    def test_entry_that_disagrees_with_its_summary(self):
+        source = self.published()
+        document = self.index()
+        document["datasets"][0]["name"] = "changed"
+        (self.target / "index.json").write_bytes(publish.index_bytes(document))
+        self.assertEqual(self.problems(), [f"index.json: the entry of {source.name} differs from its summary.json"])
+
+    def test_manifest_id_that_differs_from_the_directory_name(self):
+        source = self.published()
+        other = "ds-0123456789abcdef"
+        (self.target / "datasets" / source.name).rename(self.target / "datasets" / other)
+        document = self.index()
+        document["datasets"][0].update(dataset_id=other, path=f"datasets/{other}/")
+        (self.target / "index.json").write_bytes(publish.index_bytes(document))
+        self.assertIn(f"datasets/{other}: the manifest has dataset_id {source.name}", self.problems())
+
+    def test_symbolic_links_and_a_datasets_file_are_rejected(self):
+        source = self.published()
+        real = self.tmp / "elsewhere"
+        (self.target / "datasets" / source.name).rename(real)
+        (self.target / "datasets" / source.name).symlink_to(real)
+        self.assertEqual(self.problems(), [f"datasets/{source.name}: a symbolic link is not a dataset directory"])
+        empty = self.tmp / "empty"
+        empty.mkdir()
+        (empty / "index.json").write_text(json.dumps({"schema": "splotbench.index/1", "latest_complete": None, "datasets": []}))
+        (empty / "datasets").write_text("not a directory")
+        self.assertEqual(validate.published_problems(empty), ["datasets: must be a directory, not a link or a file"])
+        (empty / "datasets").unlink()
+        (empty / "datasets").symlink_to(self.tmp)
+        self.assertEqual(validate.published_problems(empty), ["datasets: must be a directory, not a link or a file"])
+
+    def test_index_that_is_a_json_array(self):
+        self.published()
+        (self.target / "index.json").write_text("[]\n")
+        self.assertTrue(any(p.startswith("index.json:") for p in self.problems()))
+
+    def test_damaged_dataset_directory_is_not_taken_for_a_published_directory(self):
+        source = self.dataset()
+        (source / "manifest.json").unlink()
+        self.assertFalse(validate.is_published_directory(source))
+        self.assertIn("missing manifest.json", validate.problems_for(source))
+
     def test_file_above_the_limit_and_stray_files(self):
         self.published()
         (self.target / "big.bin").write_bytes(b"x" * 11)
@@ -269,6 +384,84 @@ class PublishedDirectoryTest(PublishBase):
             problems = self.problems()
         self.assertTrue(any(p.startswith("big.bin: above") for p in problems))
         self.assertIn("big.bin: unexpected entry. Only index.json, README.md and datasets/ belong here.", problems)
+
+
+class ImmutableTest(unittest.TestCase):
+    """`validate --immutable-since` in temporary Git repositories with synthetic files."""
+
+    ID = "ds-0123456789abcdef"
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.repo = Path(temporary.name)
+        git(self.repo, "init", "-q", "-b", "main")
+        self.published = self.repo / "published"
+        (self.published / "datasets" / self.ID).mkdir(parents=True)
+        (self.published / "datasets" / self.ID / "summary.json").write_text("{}\n")
+        (self.published / "index.json").write_text(json.dumps({"schema": "splotbench.index/1", "latest_complete": None, "datasets": []}))
+        self.commit("base")
+        git(self.repo, "tag", "base")
+        git(self.repo, "switch", "-q", "-c", "change")
+
+    def commit(self, message="change"):
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-q", "-m", message)
+
+    def problems(self):
+        self.commit()
+        return validate.immutable_problems(self.published, "base")
+
+    def existing(self, name="summary.json"):
+        return self.published / "datasets" / self.ID / name
+
+    def test_new_dataset_directory_and_index_change_pass(self):
+        (self.published / "datasets" / "ds-fedcba9876543210").mkdir()
+        (self.published / "datasets" / "ds-fedcba9876543210" / "summary.json").write_text("{}\n")
+        (self.published / "index.json").write_text("{}\n")
+        self.assertEqual(self.problems(), [])
+
+    def test_index_only_change_passes(self):
+        (self.published / "index.json").write_text("changed\n")
+        self.assertEqual(self.problems(), [])
+
+    def test_modify_delete_rename_and_mode_change_fail(self):
+        self.existing().write_text("changed\n")
+        self.assertEqual(len(self.problems()), 1)
+        git(self.repo, "switch", "-q", "main")
+        git(self.repo, "switch", "-q", "-C", "change")
+        self.existing().unlink()
+        self.assertIn("deleted", self.problems()[0])
+        git(self.repo, "switch", "-q", "-C", "change", "main")
+        self.existing().rename(self.existing("renamed.json"))
+        self.assertEqual(len(self.problems()), 2)  # the old name is deleted, the new name is added to an existing directory
+        git(self.repo, "switch", "-q", "-C", "change", "main")
+        self.existing().chmod(0o755)
+        self.assertIn("changed", self.problems()[0])
+
+    def test_added_files_in_an_existing_directory_fail_with_exact_names(self):
+        for name in ("é.json", "with space.json", "-dash.json", "new line\".json"):
+            git(self.repo, "switch", "-q", "-C", "change", "main")
+            self.existing(name).write_text("x\n")
+            problems = self.problems()
+            self.assertEqual(len(problems), 1, name)
+            self.assertIn(f"published/datasets/{self.ID}/{name}: added to the existing", problems[0])
+
+    def test_bad_ref_and_command_line(self):
+        with self.assertRaises(BenchError):
+            validate.immutable_problems(self.published, "--output=x")
+        with self.assertRaises(BenchError) as raised:
+            validate.immutable_problems(self.published, "no-such-ref")
+        self.assertEqual(raised.exception.exit_code, 3)
+        index = {"schema": "splotbench.index/1", "latest_complete": None, "datasets": []}
+        shutil.rmtree(self.published / "datasets")
+        (self.published / "index.json").write_bytes(publish.index_bytes(index))
+        self.commit()
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = cli.main(["validate", str(self.published), "--immutable-since", "base"])
+        self.assertEqual(code, 1)  # the base dataset directory was deleted
+        self.assertIn("deleted since base", err.getvalue())
 
 
 if __name__ == "__main__":

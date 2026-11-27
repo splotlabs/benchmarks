@@ -50,22 +50,31 @@ The dry run and the real run start with the same checks, before any write:
 
 ### What the command does
 
-1. Copy the files into a temporary directory next to the target directory, check the copy
+1. Copy the files into a temporary directory in `datasets/` of the target, check the copy
    against `SHA256SUMS`, and move it to `datasets/<dataset_id>/` with one rename.
 2. Only then write `index.json` atomically: all existing entries stay, the new entry is
    added with `published_utc`, and `latest_complete` changes only with `--promote`.
 
+The temporary directory is `datasets/.<dataset_id>.tmp` inside the target. A stale one is
+removed when you publish the same dataset again; `bench validate published` reports it until then.
+
 A failure before step 2 leaves the index and `latest_complete` unchanged and leaves no
-partial dataset directory. Running the same command again after success changes nothing
+partial dataset directory. A failure or interrupt after the rename and before the index
+write leaves a complete dataset directory that the index does not list. `bench validate
+published` reports it ("not listed in index.json"). Running `bench publish` again with the
+same dataset completes it: the directory is "already present" and the index is written. Running the same command again after success changes nothing
 (the first `published_utc` stays). One publication at a time can run into a target: the
 command holds a lock on the target directory.
 
 ## Checks in CI
 
-CI runs `./bench validate published` and, on pull requests, fails when the pull request
-changes, renames or deletes a file of an existing `published/datasets/<id>/` directory, or
-adds files to one. New dataset directories and changes to `published/index.json` are
-allowed. These checks look at committed files only.
+CI runs `./bench validate published`. On pull requests it adds
+`--immutable-since origin/<base branch>`, which fails when the pull request changes,
+renames or deletes a file of an existing `published/datasets/<id>/` directory, or adds files
+to one. New dataset directories and changes to `published/index.json` are allowed. The
+check reads Git with null-separated output, so every file name is exact. These checks look
+at committed files only. You can run the same check locally with
+`./bench validate published --immutable-since origin/main`.
 
 `bench validate published` checks that the index is valid, that every listed dataset
 directory exists and is valid, that every dataset directory is listed, that
@@ -88,8 +97,9 @@ Check the headers again before the website depends on them.
 ## Recovery
 
 - **Interrupted copy** (disk full, Ctrl-C): no dataset directory and no index change remain
-  (a temporary `.<dataset_id>.tmp` directory may remain after a hard kill; delete it and
-  run again). Run the same command again.
+  (a temporary directory may remain after a hard kill; publishing the same dataset again removes it). Run the
+  same command again. After the rename and before the index write the dataset directory
+  stays; the same command completes it (see above).
 - **Wrong dataset, pull request not merged**: delete that dataset directory from the
   branch, restore `published/index.json` from `main` (`git checkout origin/main --
   published/index.json`), and push. CI allows this only while the directory is new.
