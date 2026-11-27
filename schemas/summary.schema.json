@@ -201,10 +201,12 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["case_id", "reason"],
+            "required": ["case_id", "implementation", "status", "reason"],
             "properties": {
               "case_id": { "$ref": "common.schema.json#/$defs/case_id" },
-              "reason": { "type": "string" }
+              "implementation": { "description": "The implementation whose cell is not ok.", "$ref": "common.schema.json#/$defs/implementation_id" },
+              "status": { "description": "The status of that cell.", "enum": ["incorrect", "unsupported", "timeout", "error", "interrupted", "not-run"] },
+              "reason": { "description": "Text form: '<implementation>: <status>'.", "type": "string" }
             }
           }
         }

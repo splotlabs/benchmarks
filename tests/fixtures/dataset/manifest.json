@@ -40,9 +40,13 @@
     "cells_expected": 16,
     "cells_ok": 6,
     "status_counts": {
+      "ok": 6,
       "incorrect": 2,
-      "not-run": 8,
-      "ok": 6
+      "unsupported": 0,
+      "timeout": 0,
+      "error": 0,
+      "interrupted": 0,
+      "not-run": 8
     }
   },
   "files": [
