@@ -24,6 +24,19 @@ from ..util import EXIT_PREREQUISITE, BenchError
 HELP_TIMEOUT_S = 60
 
 
+class MissingOption(BenchError):
+    """The binary runs, but its help text does not name an option that the adapter passes."""
+
+
+def check_origin(adapter: str, origin: str, where: str) -> None:
+    """A synthetic campaign uses only the fixture adapter; a standard campaign never uses it."""
+    if (adapter == "fixture") != (origin == "synthetic"):
+        raise BenchError(
+            f"{where}: {adapter!r} does not fit origin {origin!r}. "
+            "Only a synthetic campaign may use the 'fixture' adapter, and it may use only that adapter."
+        )
+
+
 def get(name: str):
     from . import avm, dav2d, fixture, splot  # the adapter modules import the helpers below
 
@@ -45,6 +58,8 @@ def output_of(argv: list[str]) -> str:
         done = subprocess.run(argv, capture_output=True, timeout=HELP_TIMEOUT_S, check=False)
     except FileNotFoundError:
         raise BenchError(f"{argv[0]} does not exist. Run the build again.", EXIT_PREREQUISITE) from None
+    except OSError as error:
+        raise BenchError(f"cannot run {argv[0]}: {error.strerror}. Run the build again.", EXIT_PREREQUISITE) from None
     except subprocess.TimeoutExpired:
         raise BenchError(f"`{' '.join(argv)}` did not exit within {HELP_TIMEOUT_S} s.") from None
     return (done.stdout + done.stderr).decode("utf-8", "replace")
@@ -56,7 +71,7 @@ def require_options(binary: Path, help_argv: list[str], options: tuple[str, ...]
     # A whole token: `-o` must not match inside `--output`.
     missing = [option for option in options if not re.search(rf"(?<![\w-]){re.escape(option)}(?![\w-])", text)]
     if missing:
-        raise BenchError(
+        raise MissingOption(
             f"{binary} does not support {', '.join(missing)} (not in `{' '.join(help_argv[1:])}` output). "
             "The adapter passes these options; lock a decoder revision that has them."
         )

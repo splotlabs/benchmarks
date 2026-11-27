@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import json
 import os
 import select
 import shlex
@@ -19,12 +18,15 @@ import subprocess
 import time
 from pathlib import Path
 
-from . import build, bundle, corpus, provenance, schema
+from . import adapters, build, corpus, plan, provenance, schema
 from .util import EXIT_FAILURE, EXIT_PREREQUISITE, BenchError, canonical_json, sha256_file
 
 CHUNK = 1 << 20
 GRACE_S = 2
+# After the decoder exits, the pipe must reach end of file within this time; else a descendant holds it.
+PIPE_GRACE_S = 1
 POLL_S = 0.01
+SELECT_S = 0.1
 CHROMA = {"4:2:0": (1, 1), "4:2:2": (1, 0), "4:4:4": (0, 0)}
 
 
@@ -56,8 +58,10 @@ def _wait(process: subprocess.Popen, deadline: float) -> int | None:
 def run_decode(argv: list[str], log: Path, timeout_s: int) -> dict:
     """Run one decode in its own process group; hash and count stdout. stderr goes to `log`.
 
-    On timeout: terminate the group, wait `GRACE_S`, kill the group, reap.
-    The group is killed in every case, so no descendant survives the check.
+    On timeout: terminate the group, wait `GRACE_S`, kill the group, reap. When the
+    decoder exits but the pipe stays open longer than `PIPE_GRACE_S`, a descendant
+    holds it: the result has `held_open`. The group is killed in every case, so no
+    descendant survives the check.
     """
     with open(log, "wb") as file:
         file.write(f"$ {shlex.join(argv)}\n".encode())
@@ -68,20 +72,25 @@ def run_decode(argv: list[str], log: Path, timeout_s: int) -> dict:
             )
         except OSError as error:
             return {"code": None, "timed_out": False, "bytes": None, "sha256": None, "error": str(error)}
-    digest, count, code = hashlib.sha256(), 0, None
+    digest, count, code, held_open, exited_at = hashlib.sha256(), 0, None, False, None
     deadline = time.monotonic() + timeout_s
     descriptor = process.stdout.fileno()
     try:
-        while (remaining := deadline - time.monotonic()) > 0:
-            if not select.select([descriptor], [], [], remaining)[0]:
+        while (now := time.monotonic()) < deadline:
+            if exited_at is None and process.poll() is not None:
+                exited_at = now
+            if exited_at is not None and now - exited_at >= PIPE_GRACE_S:
+                held_open = True
+                break
+            if not select.select([descriptor], [], [], min(deadline - now, SELECT_S))[0]:
                 continue
             chunk = os.read(descriptor, CHUNK)
             if not chunk:
                 break
             digest.update(chunk)
             count += len(chunk)
-        code = _wait(process, deadline)
-        if code is None:
+        code = process.returncode if held_open else _wait(process, deadline)
+        if code is None or held_open:
             _signal_group(process.pid, signal.SIGTERM)
             _wait(process, time.monotonic() + GRACE_S)
     finally:
@@ -89,11 +98,23 @@ def run_decode(argv: list[str], log: Path, timeout_s: int) -> dict:
         _signal_group(process.pid, signal.SIGKILL)
         process.stdout.close()
         process.wait()
-    return {"code": code, "timed_out": code is None, "bytes": count, "sha256": "sha256:" + digest.hexdigest(), "error": None}
+    return {
+        "code": code,
+        "timed_out": code is None,
+        "held_open": held_open,
+        "bytes": count,
+        "sha256": "sha256:" + digest.hexdigest(),
+        "error": None,
+    }
+
+
+def _decoder_output(log: Path) -> str:
+    """The decoder's stderr: the log without the `$ command` line that the harness wrote first."""
+    return log.read_text(errors="replace").partition("\n")[2]
 
 
 def _last_line(log: Path) -> str:
-    lines = [line.strip() for line in log.read_text(errors="replace").splitlines()[1:] if line.strip()]
+    lines = [line.strip() for line in _decoder_output(log).splitlines() if line.strip()]
     return lines[-1][:200] if lines else ""
 
 
@@ -104,10 +125,12 @@ def _judge(adapter, case: dict, result: dict, log: Path, timeout_s: int) -> tupl
     if result["timed_out"]:
         return "timeout", None, f"no exit within {timeout_s} s; the process group was killed"
     code = result["code"]
+    if result["held_open"]:
+        return "error", code, "the decoder exited, but a descendant kept the output open; the output is not trustworthy"
     if code < 0:
         return "error", None, f"killed by signal {-code}"
     if code != 0:
-        outcome = "unsupported" if adapter.unsupported(log.read_text(errors="replace")) else "error"
+        outcome = "unsupported" if adapter.unsupported(_decoder_output(log)) else "error"
         return outcome, code, f"exit code {code}: {_last_line(log)}"
     expected = case["reference"]["raw_bytes"]
     if result["bytes"] < expected:
@@ -180,15 +203,17 @@ def run(
         binary = work / manifest["binary_path"]
         try:
             adapter.capabilities(binary)
-            missing = None
-        except BenchError as error:
-            missing = str(error)
+            refused = None
+        except adapters.MissingOption as error:
+            refused = ("unsupported", str(error))
+        except BenchError as error:  # the help command did not run or did not exit
+            refused = ("error", str(error))
         logs = work / "verify" / manifest["build_id"]
         logs.mkdir(parents=True, exist_ok=True)
         for item in cases:
             for budget in budgets:
-                if missing:
-                    outcome, code, detail, result = "unsupported", None, missing, {"bytes": None, "sha256": None}
+                if refused:
+                    (outcome, detail), code, result = refused, None, {"bytes": None, "sha256": None}
                 else:
                     log = _next_log(logs, item["id"], budget)
                     result = run_decode(adapter.verify_command(binary, inputs[item["id"]], budget), log, timeout_s)
@@ -216,20 +241,9 @@ def run(
     return rows
 
 
-def load_lock(path: Path) -> dict:
-    try:
-        data = Path(path).read_bytes()
-    except OSError as error:
-        raise BenchError(f"cannot read the lock {path}: {error.strerror}.", EXIT_PREREQUISITE) from None
-    problems = bundle.document_problems(Path(path).name, data, ("object", "splotbench.lock/1"))
-    if problems:
-        raise BenchError(f"{path} is not a valid lock: {problems[0]}")
-    return json.loads(data)
-
-
 def _verify(args: argparse.Namespace) -> int:
     rows = run(
-        load_lock(args.lock), args.role, args.work, case=args.case, implementation=args.implementation, threads=args.threads
+        plan.load_lock(args.lock), args.role, args.work, case=args.case, implementation=args.implementation, threads=args.threads
     )
     for row in rows:
         detail = f" ({row['detail']})" if row["detail"] else ""

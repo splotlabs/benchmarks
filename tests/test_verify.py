@@ -24,6 +24,11 @@ EXPECTED = {
     "fail": ("error", 3, "exit code 3: fixture: decode failed"),
     "unsupported": ("unsupported", 1, "exit code 1: fixture: unsupported stream"),
     "unsupported-option": ("unsupported", 2, "exit code 2: decoder: unrecognized option '--threads'"),
+    # Complete, correct output with a nonzero exit code is not ok.
+    "exit-after-output": ("error", 1, "exit code 1: fixture: decoded 2 frames"),
+    "signal": ("error", None, "killed by signal 9"),
+    # 8 MiB on stderr goes to the log file and does not block the decoder.
+    "noisy": ("ok", 0, None),
 }
 
 
@@ -87,6 +92,31 @@ class VerifyTest(unittest.TestCase):
         leader, descendant = map(int, pid_file.read_text().split())
         self.assertTrue(gone(leader), "the decoder process is still alive")
         self.assertTrue(gone(descendant), "the descendant process is still alive")
+
+    def test_descendant_that_keeps_the_output_open_is_an_error(self):
+        pid_file = self.root / "pids.txt"
+        lock = self.prepare([fb.case(self.work, "fixture-orphan", "orphan-pipe", pid_file=str(pid_file))], timeout_s=60)
+        start = time.monotonic()
+        (row,) = verify.run(lock, self.role, self.work, threads=1)
+        self.assertLess(time.monotonic() - start, 20)  # not the whole timeout
+        self.assertEqual((row["outcome"], row["exit_code"]), ("error", 0))
+        self.assertIn("a descendant kept the output open", row["detail"])
+        leader, descendant = map(int, pid_file.read_text().split())
+        self.assertTrue(gone(leader))
+        self.assertTrue(gone(descendant), "the descendant process is still alive")
+
+    def test_unsupported_search_ignores_the_command_line(self):
+        self.work = self.root / "unsupported stream"  # the logged command line contains these words
+        lock = self.prepare([fb.case(self.work, "fixture-fail", "fail")])
+        (row,) = verify.run(lock, self.role, self.work, threads=1)
+        self.assertEqual(row["outcome"], "error")
+
+    def test_help_that_cannot_run_is_an_error_not_unsupported(self):
+        lock = self.prepare([fb.case(self.work, "fixture-ok", "ok")])
+        os.chmod(self.work / "build" / "fixture-a" / self.impl["commit"] / "decoder", 0o644)
+        rows = verify.run(lock, self.role, self.work)
+        self.assertEqual({row["outcome"] for row in rows}, {"error"})
+        self.assertIn("cannot run", rows[0]["detail"])
 
     def test_new_check_appends_and_keeps_earlier_rows(self):
         lock = self.prepare([fb.case(self.work, "fixture-ok", "ok")])

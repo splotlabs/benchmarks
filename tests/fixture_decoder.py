@@ -5,11 +5,15 @@
 Usage: decoder [--threads N] [-o PATH|-|--discard] INPUT. INPUT is JSON:
 {"mode": ..., "fill": byte value, "bytes": output size, "frames": count, "pid_file": path}.
 Modes: ok, wrong (other bytes), short (half the bytes), long (one byte more), fail (exit 3),
-unsupported, unsupported-option, hang, spawn-hang (start a descendant, write both pids, hang).
+unsupported, unsupported-option, hang, spawn-hang (start a descendant, write both pids, hang),
+exit-after-output (correct bytes, exit 1), signal (correct bytes, then SIGKILL itself),
+noisy (8 MiB on stderr, then correct bytes), orphan-pipe (start a descendant that keeps
+stdout open, write both pids, write correct bytes, exit 0).
 """
 
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -51,6 +55,13 @@ def main(argv: list[str]) -> int:
             with open(spec["pid_file"], "w") as file:
                 file.write(f"{os.getpid()} {child.pid}\n")
         time.sleep(3600)
+    if mode == "noisy":
+        sys.stderr.write("synthetic noise line\n" * ((8 << 20) // 21))
+        sys.stderr.flush()
+    if mode == "orphan-pipe":
+        child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(3600)"], stdout=sys.stdout)
+        with open(spec["pid_file"], "w") as file:
+            file.write(f"{os.getpid()} {child.pid}\n")
     size = {"short": spec["bytes"] // 2, "long": spec["bytes"] + 1}.get(mode, spec["bytes"])
     fill = (spec["fill"] + (mode == "wrong")) % 256
     if sink is not None:
@@ -58,7 +69,9 @@ def main(argv: list[str]) -> int:
         output.write(bytes([fill]) * size)
         output.flush()
     print(f"fixture: decoded {spec['frames']} frames", file=sys.stderr)
-    return 0
+    if mode == "signal":
+        os.kill(os.getpid(), signal.SIGKILL)
+    return 1 if mode == "exit-after-output" else 0
 
 
 if __name__ == "__main__":

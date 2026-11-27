@@ -73,60 +73,81 @@ class CommandTest(unittest.TestCase):
 
 
 class RecipeTest(unittest.TestCase):
+    """The properties of policy optimized-source/1 in each recipe, not a copy of the argv lists."""
+
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.src = Path(temporary.name)
         (self.src / ".cargo").mkdir()
-        (self.src / ".cargo" / "config.toml").write_text(
+        self.config = self.src / ".cargo" / "config.toml"
+        self.config.write_text(
             "[target.'cfg(target_arch = \"x86_64\")']\nrustflags = [\"-C\", \"target-cpu=x86-64-v3\"]\n"
         )
         (self.src / "Cargo.toml").write_text('[profile.release]\nlto = "thin"\n')
 
-    def test_splot(self):
-        recipe = SPLOT.recipe(self.src, "aarch64")
-        self.assertEqual(
-            recipe["steps"],
-            [["cargo", "build", "--release", "-p", "splot-cli", "--locked", "--target-dir", "<build>", "-j", "<jobs>"]],
-        )
-        self.assertEqual((recipe["binary"], recipe["lockfiles"]), ("<build>/release/splot", ["Cargo.lock"]))
-        self.assertEqual((recipe["configuration"]["target_cpu"], recipe["configuration"]["lto"]), ("toolchain-default", "thin"))
+    def words(self, adapter, arch):
+        recipe = adapter.recipe(self.src, arch)
+        return recipe, [part for step in recipe["steps"] for part in step]
+
+    def test_release_configuration_and_job_count(self):
+        release = {"splot": "--release", "dav2d": "release", "avm": "-DCMAKE_BUILD_TYPE=Release"}
+        for name, adapter in (("splot", SPLOT), ("dav2d", DAV2D), ("avm", AVM)):
+            for arch in ("aarch64", "x86_64"):
+                recipe, words = self.words(adapter, arch)
+                self.assertIn(release[name], words, name)
+                self.assertIn("<jobs>", recipe["steps"][-1], name)
+                self.assertEqual(recipe["steps"][-1][recipe["steps"][-1].index("<jobs>") - 1], "-j", name)
+                self.assertIn("<build>", " ".join(words), name)  # out of tree
+                self.assertFalse(recipe["configuration"]["pgo"], name)
+                self.assertEqual(recipe["configuration"]["simd"], "on", name)
+                self.assertFalse(any("native" in word or "profile-" in word for word in words), name)
+
+    def test_assembly_is_on_and_checked(self):
+        for arch in ("aarch64", "x86_64"):
+            recipe, words = self.words(DAV2D, arch)
+            self.assertIn("-Denable_asm=true", words)
+            self.assertEqual(recipe["simd_check"], ("config.h", "#define HAVE_ASM 1"))
+            recipe, words = self.words(AVM, arch)
+            self.assertFalse(any("ENABLE_ASM" in word or "RUNTIME_CPU_DETECT=0" in word for word in words))
+            self.assertEqual(recipe["simd_check"][0], "config/avm_config.h")
+        self.assertIn("HAVE_AVX2 1", AVM.recipe(self.src, "x86_64")["simd_check"][1])
+        self.assertIn("HAVE_NEON 1", AVM.recipe(self.src, "aarch64")["simd_check"][1])
+
+    def test_x86_64_v3_only_on_x86_64(self):
+        for adapter in (DAV2D, AVM):
+            self.assertTrue(any("-march=x86-64-v3" in word for word in self.words(adapter, "x86_64")[1]))
+            self.assertFalse(any("x86-64" in word for word in self.words(adapter, "aarch64")[1]))
         self.assertEqual(SPLOT.recipe(self.src, "x86_64")["configuration"]["target_cpu"], "x86-64-v3")
-
-    def test_splot_without_the_x86_64_v3_floor_is_refused_on_x86_64(self):
-        (self.src / ".cargo" / "config.toml").write_text("# synthetic: no rustflags\n")
-        with self.assertRaisesRegex(BenchError, "optimized-source/1"):
-            SPLOT.recipe(self.src, "x86_64")
-        self.assertEqual(SPLOT.recipe(self.src, "aarch64")["configuration"]["simd"], "on")
-
-    def test_dav2d(self):
-        setup = ["meson", "setup", "<build>", "<src>", "--buildtype", "release", "-Ddefault_library=static"]
-        setup += ["-Denable_tools=true", "-Denable_tests=false", "-Denable_docs=false", "-Denable_asm=true"]
-        setup += ["-Dxxhash_muxer=disabled"]
-        build = ["ninja", "-C", "<build>", "-j", "<jobs>", "tools/dav2d"]
-        self.assertEqual(DAV2D.recipe(self.src, "aarch64")["steps"], [setup, build])
-        self.assertEqual(DAV2D.recipe(self.src, "x86_64")["steps"], [[*setup, "-Dc_args=-march=x86-64-v3"], build])
-        self.assertEqual(DAV2D.recipe(self.src, "aarch64")["binary"], "<build>/tools/dav2d")
+        self.assertEqual(SPLOT.recipe(self.src, "aarch64")["configuration"]["target_cpu"], "toolchain-default")
         self.assertIn("nasm", DAV2D.tools("x86_64"))
         self.assertNotIn("nasm", DAV2D.tools("aarch64"))
 
-    def test_avm(self):
-        configure = ["cmake", "-G", "Ninja", "-S", "<src>", "-B", "<build>", "-DCMAKE_BUILD_TYPE=Release"]
-        configure += ["-DCONFIG_AV2_ENCODER=0", "-DENABLE_TESTS=0", "-DENABLE_DOCS=0", "-DENABLE_EXAMPLES=0", "-DENABLE_TOOLS=0"]
-        build = ["cmake", "--build", "<build>", "--target", "avmdec", "-j", "<jobs>"]
-        self.assertEqual(AVM.recipe(self.src, "aarch64")["steps"], [configure, build])
-        x86 = [*configure, "-DENABLE_NASM=1", "-DCMAKE_C_FLAGS=-march=x86-64-v3", "-DCMAKE_CXX_FLAGS=-march=x86-64-v3"]
-        self.assertEqual(AVM.recipe(self.src, "x86_64")["steps"], [x86, build])
-        self.assertEqual(AVM.recipe(self.src, "aarch64")["simd_check"], ("config/avm_config.h", "#define HAVE_NEON 1"))
+    def test_splot_x86_64_floor_is_parsed_not_searched(self):
+        self.config.write_text('# rustflags = ["-C", "target-cpu=x86-64-v3"]\n')
+        with self.assertRaisesRegex(BenchError, "optimized-source/1"):
+            SPLOT.recipe(self.src, "x86_64")
+        self.config.write_text('[target.x86_64-unknown-linux-gnu]\nrustflags = ["-Ctarget-cpu=x86-64-v3"]\n')
+        self.assertEqual(SPLOT.recipe(self.src, "x86_64")["configuration"]["target_cpu"], "x86-64-v3")
+        self.config.unlink()
+        with self.assertRaisesRegex(BenchError, "optimized-source/1"):
+            SPLOT.recipe(self.src, "x86_64")
+        self.assertEqual(SPLOT.recipe(self.src, "aarch64")["configuration"]["lto"], "thin")
 
-    def test_no_recipe_uses_native_or_pgo(self):
-        for adapter in (SPLOT, DAV2D, AVM):
-            for arch in ("aarch64", "x86_64"):
-                recipe = adapter.recipe(self.src, arch)
-                text = " ".join(part for step in recipe["steps"] for part in step)
-                self.assertNotIn("native", text)
-                self.assertNotIn("profile", text)
-                self.assertFalse(recipe["configuration"]["pgo"])
+    def test_splot_expects_the_pinned_rustc(self):
+        self.assertEqual(SPLOT.recipe(self.src, "aarch64")["expect"], {})
+        (self.src / "rust-toolchain.toml").write_text('[toolchain]\nchannel = "1.100.0"\n')
+        self.assertEqual(SPLOT.recipe(self.src, "aarch64")["expect"], {"rustc": "rustc 1.100.0 "})
+
+
+class OriginTest(unittest.TestCase):
+    def test_adapter_fits_origin_in_both_directions(self):
+        adapters.check_origin("fixture", "synthetic", "synthetic")
+        adapters.check_origin("dav2d", "standard", "synthetic")
+        with self.assertRaisesRegex(BenchError, "does not fit origin 'standard'"):
+            adapters.check_origin("fixture", "standard", "synthetic")
+        with self.assertRaisesRegex(BenchError, "does not fit origin 'synthetic'"):
+            adapters.check_origin("splot", "synthetic", "synthetic")
 
 
 class CapabilityTest(unittest.TestCase):
@@ -148,6 +169,14 @@ class CapabilityTest(unittest.TestCase):
         text = HELP["splot"].replace("  -o, --output <OUTPUT>\n", "      --output <OUTPUT>\n")
         with self.assertRaisesRegex(BenchError, "does not support -o"):
             SPLOT.capabilities(canned(self.directory, text))
+
+    def test_binary_without_execute_bit_is_an_error_not_a_traceback(self):
+        script = canned(self.directory, HELP["avm"])
+        os.chmod(script, 0o644)
+        with self.assertRaises(BenchError) as raised:
+            AVM.capabilities(script)
+        self.assertNotIsInstance(raised.exception, adapters.MissingOption)
+        self.assertIn("cannot run", str(raised.exception))
 
     def test_versions(self):
         self.assertEqual(AVM.version(canned(self.directory, HELP["avm"])), "av2    - AOMedia Project AV2 Decoder v0.0.0-synthetic")

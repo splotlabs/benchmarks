@@ -14,15 +14,21 @@ fetched or built: a missing checkout or a missing finished build stops with exit
    `W/src/<id>/<commit>/` (`git fetch --depth 1 <repository> <commit>`). A branch
    or a tag is never resolved here.
 2. Check with `provenance.snapshot` that the checkout is clean and at the locked
-   commit. Any other checkout is refused; remove it and the next build fetches it again.
+   commit, and that it has no file that Git ignores (`git status --porcelain --ignored`).
+   Any other checkout is refused; remove it and the next build fetches it again.
 3. Build out of tree into `W/build/<id>/<commit>/` by the recipe of the adapter.
    The output of every step goes to `build.log`.
-4. Check that the build did not change the source tree and that SIMD or assembly
+4. Check that the build did not change the source tree (the same check as in
+   step 2, also for ignored files) and that SIMD or assembly
    is on (dav2d: `config.h` has `HAVE_ASM 1`; avmdec: `avm_config.h` has
    `HAVE_NEON 1` on arm64, `HAVE_AVX2 1` on x86-64).
 5. Write `build.json` (`splotbench.build/1`): toolchain versions, target, the
    recipe arguments, configuration, lock-file digests, binary digest, version
-   output, allow-listed environment and `build_id`.
+   output, the permitted environment variables that were passed, and `build_id`.
+
+A synthetic lock uses only the `fixture` adapter, and a standard lock never uses
+it. `plan.py` (lock time) and `build.py` (build time) call the same rule,
+`adapters.check_origin`, because a lock file can come from another person.
 
 The policy:
 
@@ -31,7 +37,8 @@ The policy:
 - No `-march=native`, no PGO, no patches.
 - Compiler flags come from the recipe only. When `CFLAGS`, `CXXFLAGS`, `LDFLAGS`,
   `RUSTFLAGS`, `CARGO_ENCODED_RUSTFLAGS`, `CARGO_BUILD_RUSTFLAGS` or
-  `CARGO_BUILD_TARGET` is set, the build stops with exit code 3.
+  `CARGO_BUILD_TARGET` is set, the build stops with exit code 3 (they would not
+  reach the build anyway; see below).
 - A recipe that cannot follow the policy on a platform stops with a message.
 - A missing tool stops with exit code 3 and names the tool.
 - `--jobs` limits the parallel jobs (default: half of the logical CPUs).
@@ -42,14 +49,44 @@ job count, so the build identity does not depend on the work directory or `--job
 `build.log` has the exact executed commands.
 
 A finished build is reused only when the recorded source snapshot and
-configuration are unchanged and the binary digest still matches. A changed binary
-is an error that names both digests. A build of another snapshot or configuration
-is removed and built again. The reserved build origin `upstream-release-asset`
-is refused ("not supported").
+configuration are unchanged, the binary digest still matches, and the manifest is
+synthetic exactly when the lock is. A changed binary is an error that names both
+digests. A build of another snapshot, configuration or class is removed and built
+again. On reuse, the fields that come from the lock (`class`, `source.repository`,
+`identity`, `release`, `build_origin`) are taken from the current lock and the
+manifest is written again; they are not part of `build_id`. The reserved build
+origin `upstream-release-asset` is refused ("not supported").
+
+### What the harness isolates
+
+- **Environment.** Every build step and toolchain probe runs with a new
+  environment: `PATH`, `HOME`, `TMPDIR`, `SDKROOT`, `DEVELOPER_DIR`, `RUSTUP_HOME`
+  and `CARGO_HOME` when they are set, the permitted variables `CC`, `CXX` and
+  `MACOSX_DEPLOYMENT_TARGET`, and `LC_ALL=C`. Nothing else reaches the tools, so
+  for example `CPPFLAGS`, `CARGO_PROFILE_RELEASE_*`, `CARGO_TARGET_<TRIPLE>_RUSTFLAGS`,
+  `RUSTC_WRAPPER`, `RUSTUP_TOOLCHAIN`, `CMAKE_TOOLCHAIN_FILE`,
+  `CMAKE_C_COMPILER_LAUNCHER`, `PKG_CONFIG_PATH`, `NASM_PATH` and `YASM_PATH`
+  do not apply. `environment` in `build.json` lists exactly the permitted
+  variables that were passed. Steps get no standard input.
+- **Cargo configuration.** Cargo reads `.cargo/config.toml` and `.cargo/config` in
+  every parent directory of the checkout and in the Cargo home (`CARGO_HOME`, else
+  `~/.cargo`). When one of them has a table `build`, `target`, `profile`, `env`,
+  `host`, `unstable` or `patch`, the build stops with exit code 3 and names the
+  file: move it, or set `CARGO_HOME` to a directory without it. The checkout's own
+  `.cargo/config.toml` is part of the source snapshot.
+- **Rust toolchain.** A rustup directory override outranks `rust-toolchain.toml`.
+  The build stops with exit code 3 when `rustc -V` does not show the pinned channel.
+- **Meson.** Meson reads machine files only when `--native-file` or `--cross-file`
+  is given; the recipe gives neither. Its environment inputs are removed (above).
+- **CMake.** CMake reads presets only with `--preset`; the recipe gives none. A
+  `CMakeUserPresets.json` in the checkout would make it unclean. Toolchain and
+  launcher variables from the environment are removed (above).
+- **Not isolated.** The tools on `PATH` (compiler, Meson, CMake, Ninja, nasm) are
+  the host's. `build.json` records their versions; it does not pin them.
 
 | Decoder | Recipe (arm64) | x86-64 addition | Binary |
 | --- | --- | --- | --- |
-| Splot | `cargo build --release -p splot-cli --locked --target-dir <build>`; toolchain from `rust-toolchain.toml`; release profile from `Cargo.toml` | `target-cpu=x86-64-v3` comes from `.cargo/config.toml`; the recipe fails when that line is missing | `release/splot` |
+| Splot | `cargo build --release -p splot-cli --locked --target-dir <build>`; toolchain from `rust-toolchain.toml`; release profile from `Cargo.toml` | `target-cpu=x86-64-v3` comes from `.cargo/config.toml`; the recipe parses that file and fails when the flag is missing | `release/splot` |
 | dav2d | `meson setup --buildtype release -Ddefault_library=static -Denable_tools=true -Denable_tests=false -Denable_docs=false -Denable_asm=true -Dxxhash_muxer=disabled`, then `ninja tools/dav2d` | `-Dc_args=-march=x86-64-v3`; nasm | `tools/dav2d` |
 | avmdec | `cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCONFIG_AV2_ENCODER=0 -DENABLE_TESTS=0 -DENABLE_DOCS=0 -DENABLE_EXAMPLES=0 -DENABLE_TOOLS=0`, then `cmake --build --target avmdec` | `-DENABLE_NASM=1`, `-DCMAKE_C_FLAGS=-march=x86-64-v3`, `-DCMAKE_CXX_FLAGS=-march=x86-64-v3` | `avmdec` |
 
@@ -103,7 +140,9 @@ Paths are relative to each repository. Check them again when a lock names other 
 - Threads: `--threads N` starts N row-worker threads `splot-row-<i>`
   (`crates/splot-parallel/src/rows.rs:926-951`); the calling thread drives
   parsing and output and is not counted. `0` or `auto` means the number of
-  logical CPUs (`crates/splot-parallel/src/thread_count.rs:39-44`).
+  logical CPUs: the parser maps `auto` to 0 (`crates/splot-parallel/src/error.rs:36-47`),
+  and 0 becomes `Auto` (`thread_count.rs:27-32`, `thread_count.rs:56-61`), which
+  resolves to the available parallelism (`thread_count.rs:39-44`).
 - Frame delay: `--frame-delay auto` (default) is the worker count
   (`decode.rs:87-92`, `crates/splot-parallel/src/frame_delay.rs:43-48`).
 - Frame count: no counter. `parse_frames` gives `null`.
@@ -202,10 +241,14 @@ budget of the role:
 1. Check the binary digest against `build.json`. A changed binary stops the pass.
 2. Check the options of the binary (see above).
 3. Run the verification command with the raw output on a pipe, in its own process
-   group, stderr to `W/verify/<build_id>/<case>-t<N>-<n>.log`.
+   group, stderr to `W/verify/<build_id>/<case>-t<N>-<n>.log`. The check of the
+   options and the `unsupported` messages read only the decoder output, not the
+   command line that the harness writes at the top of the log.
 4. Hash (SHA-256) and count the stream in the harness. The stream is not stored.
 5. On the lock timeout: terminate the process group, wait 2 s, kill the group,
-   reap. The group is killed after every check, so no descendant survives.
+   reap. When the decoder exits but the pipe is still open 1 s later, a descendant
+   holds it: terminate the group and record `error` (the output is not
+   trustworthy). The group is killed after every check, so no descendant survives.
 6. Append one `splotbench.correctness/1` row to `W/verify/<build_id>.jsonl`.
    Earlier rows stay; a new check appends.
 
@@ -213,9 +256,9 @@ budget of the role:
 | --- | --- |
 | `ok` | exit code 0, byte count equal to `raw_bytes`, digest equal to the reference |
 | `incorrect` | exit code 0, but short output, a wrong byte count or a wrong digest (`detail` says which) |
-| `unsupported` | the decoder says it cannot decode the stream, or the binary lacks a needed option |
+| `unsupported` | the decoder says it cannot decode the stream, or its help text lacks a needed option |
 | `timeout` | no exit within `timeout_s` |
-| `error` | any other failure: other nonzero exit code, signal, or the decoder cannot start |
+| `error` | any other failure: other nonzero exit code (also with complete, correct output), a signal, a descendant that keeps the output open, a help command that cannot run, or a decoder that cannot start |
 
 A zero exit code alone is never `ok`. The command prints one line per check and
 exits 1 when a check is not `ok`.
