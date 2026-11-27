@@ -21,7 +21,7 @@ These rules are canonical. `CLAUDE.md` points to this file.
 
 - Use Python 3.11 or newer and the standard library only. Get the owner's
   approval before you add any dependency or build step.
-- Start every `.py` file with `# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0`.
+- Start every `.py` file with `# SPDX-License-Identifier: MIT`.
 - Each command module adds its parser with `register(subparsers)` in `cli.py`.
 - Raise `BenchError` for an expected failure. The CLI prints one actionable
   message (what failed, which file or value, what to do) without a traceback.
@@ -70,7 +70,7 @@ Work on a named branch. Do not push to `main`.
 ## Owner decisions
 
 Ask the owner before you change licence, contribution or privacy terms.
-Do not edit `LICENSE.md`. Say "source-available", never "open source".
+This repository is MIT licensed, an open-source licence. Do not edit `LICENSE`.
 
 ## Autonomous Work
 

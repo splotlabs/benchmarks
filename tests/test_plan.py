@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# SPDX-License-Identifier: MIT
 """Tests for the campaign plan, the lock, the matrix and the real corpus files. No network."""
 
 import argparse

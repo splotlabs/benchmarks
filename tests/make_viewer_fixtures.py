@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# SPDX-License-Identifier: MIT
 """Write synthetic published-style data for tests of data viewers (the website).
 
     python3 tests/make_viewer_fixtures.py OUT_DIR

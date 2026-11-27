@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# SPDX-License-Identifier: MIT
 """Build synthetic campaigns for tests: file:// Git repositories, file: streams and a corpus manifest."""
 
 from __future__ import annotations

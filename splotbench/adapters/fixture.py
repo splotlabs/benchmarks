@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# SPDX-License-Identifier: MIT
 """Fixture decoder for synthetic locks only: a Python script that plays a decoder (see tests/fixture_decoder.py).
 
 The "build" installs `decoder.py` of the pinned synthetic source into the build tree.

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# SPDX-License-Identifier: MIT
 """Tests for `bench assemble`. Every bundle is written here from a compact synthetic description.
 
 Throughput is fps = frames / wall seconds. Every case has 2 frames, so a wall time of

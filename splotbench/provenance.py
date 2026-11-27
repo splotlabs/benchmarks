@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# SPDX-License-Identifier: MIT
 """Provenance: source snapshots, release resolution, identity classes, binary identity, `bench identity`."""
 
 from __future__ import annotations

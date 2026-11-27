@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# SPDX-License-Identifier: MIT
 """Campaign plan, lock and matrix: `bench lock` and `bench matrix`."""
 
 from __future__ import annotations

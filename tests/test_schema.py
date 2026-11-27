@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# SPDX-License-Identifier: MIT
 """Tests for the schemas and the validator. All fixtures are synthetic."""
 
 import copy

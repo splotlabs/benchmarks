@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# SPDX-License-Identifier: MIT
 """Tests for the viewer fixture generator: determinism, validity and the scenario properties."""
 
 import collections
