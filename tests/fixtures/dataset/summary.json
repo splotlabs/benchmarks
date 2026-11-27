@@ -1,9 +1,9 @@
 {
   "schema": "splotbench.summary/1",
   "dataset_id": "ds-f5f4f92afb47136f",
-  "campaign_id": "fixture-decode-b26a85620211",
+  "campaign_id": "fixture-decode-f3380705dfda",
   "name": "fixture-decode",
-  "lock_digest": "sha256:b26a85620211f8f5490bc91f3d633122523a8d98f225e265379f7d588333b4f1",
+  "lock_digest": "sha256:f3380705dfda402530c6afb56e68117e9be20c715736ad6730fc676848e141c1",
   "origin": "synthetic",
   "complete": false,
   "workload": {
@@ -13,7 +13,7 @@
     "id": "decode-cli-wall/1",
     "timing_boundary": "process-wall",
     "film_grain": "apply",
-    "output_policy": "raw-discard",
+    "output_policy": "decode-discard",
     "frame_delay": "decoder-default",
     "warmups": 1,
     "repetitions": 3,

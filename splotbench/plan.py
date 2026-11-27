@@ -12,7 +12,7 @@ import tomllib
 from pathlib import Path
 from typing import NamedTuple
 
-from . import __version__, corpus, provenance, schema
+from . import __version__, adapters, corpus, provenance, schema
 from .util import BenchError, canonical_json, sha256_bytes
 
 MAX_TIMEOUT_S = 86400  # one day; the lock schema has the same maximum
@@ -84,11 +84,7 @@ def parse_plan(path: Path) -> dict:
         ids.add(entry["id"])
         if entry.get("release_url_template") and not entry.get("release_tag_pattern"):
             raise BenchError(f"plan {where} release_url_template: needs release_tag_pattern. Add the pattern.")
-        if (entry["adapter"] == "fixture") != (plan["origin"] == "synthetic"):
-            raise BenchError(
-                f"plan {where} adapter: {entry['adapter']!r} does not fit origin {plan['origin']!r}. "
-                "Only a synthetic plan may use the 'fixture' adapter, and it may use only that adapter."
-            )
+        adapters.check_origin(entry["adapter"], plan["origin"], f"plan {where} adapter")
         corpus.check_url(entry["repository"], plan["origin"] == "synthetic", f"plan {where} repository")
     if not isinstance(plan["roles"], dict) or not plan["roles"]:
         raise BenchError("plan roles: expected at least one [roles.NAME] table.")
@@ -155,7 +151,7 @@ def _assemble(plan: dict, base: Path, harness: dict, resolved: list[dict] | None
             "order": {"policy": "seeded-rotation/1", "seed": plan["order_seed"]},
             "noise_max_range_permille": plan["noise_max_range_permille"],
             "film_grain": "apply",
-            "output_policy": "raw-discard",
+            "output_policy": "decode-discard",
             "frame_delay": "decoder-default",
             "timing_boundary": "process-wall",
         },

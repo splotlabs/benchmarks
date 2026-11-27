@@ -1,6 +1,6 @@
 {
   "schema": "splotbench.lock/1",
-  "lock_digest": "sha256:b26a85620211f8f5490bc91f3d633122523a8d98f225e265379f7d588333b4f1",
+  "lock_digest": "sha256:f3380705dfda402530c6afb56e68117e9be20c715736ad6730fc676848e141c1",
   "lock": {
     "name": "fixture-decode",
     "origin": "synthetic",
@@ -137,7 +137,7 @@
       },
       "noise_max_range_permille": 50,
       "film_grain": "apply",
-      "output_policy": "raw-discard",
+      "output_policy": "decode-discard",
       "frame_delay": "decoder-default",
       "timing_boundary": "process-wall"
     }

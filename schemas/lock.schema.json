@@ -97,7 +97,7 @@
             },
             "noise_max_range_permille": { "type": "integer", "minimum": 0 },
             "film_grain": { "const": "apply" },
-            "output_policy": { "const": "raw-discard" },
+            "output_policy": { "const": "decode-discard" },
             "frame_delay": { "const": "decoder-default" },
             "timing_boundary": { "const": "process-wall" }
           }

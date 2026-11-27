@@ -1,8 +1,8 @@
 {
   "schema": "splotbench.run/1",
   "run_id": "arm64-20260101T000000Z-0f1e2d3c",
-  "campaign_id": "fixture-decode-b26a85620211",
-  "lock_digest": "sha256:b26a85620211f8f5490bc91f3d633122523a8d98f225e265379f7d588333b4f1",
+  "campaign_id": "fixture-decode-f3380705dfda",
+  "lock_digest": "sha256:f3380705dfda402530c6afb56e68117e9be20c715736ad6730fc676848e141c1",
   "role": "arm64",
   "machine_id": "fixture-arm64",
   "state": "complete",

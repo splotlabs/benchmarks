@@ -4,7 +4,7 @@
   "datasets": [
     {
       "dataset_id": "ds-f5f4f92afb47136f",
-      "campaign_id": "fixture-decode-b26a85620211",
+      "campaign_id": "fixture-decode-f3380705dfda",
       "name": "fixture-decode",
       "origin": "synthetic",
       "complete": false,

@@ -23,7 +23,7 @@
         "id": { "$ref": "common.schema.json#/$defs/methodology" },
         "timing_boundary": { "const": "process-wall" },
         "film_grain": { "const": "apply" },
-        "output_policy": { "const": "raw-discard" },
+        "output_policy": { "const": "decode-discard" },
         "frame_delay": { "const": "decoder-default" },
         "warmups": { "type": "integer", "minimum": 0 },
         "repetitions": { "type": "integer", "minimum": 1 },
