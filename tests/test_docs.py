@@ -127,6 +127,33 @@ class DocCommandsParseTest(unittest.TestCase):
         )
 
 
+def synopsis() -> dict[str, set[str]]:
+    """The long options per command in the README synopsis (the `text` block of the section Use)."""
+    block = section(ROOT / "README.md", "## Use").split("```text\n")[1].split("```")[0]
+    found, command = {}, None
+    for line in block.splitlines():
+        if line.startswith("./bench "):
+            command = line.split()[1]
+            found[command] = set()
+        text = line.split("#")[0]
+        found[command] |= set(re.findall(r"--[a-z][a-z-]*", text))
+        if re.search(r" -o ", text):  # the short form of --output
+            found[command].add("--output")
+    return found
+
+
+class ReadmeSynopsisTest(unittest.TestCase):
+    def test_synopsis_matches_the_parser(self):
+        parser = build_parser()
+        choices = parser._subparsers._group_actions[0].choices
+        found = synopsis()
+        self.assertEqual(set(found) - {"--help", "--version"}, set(choices))
+        for name, subparser in choices.items():
+            options = {o for a in subparser._actions for o in a.option_strings if o.startswith("--")} - {"--help"}
+            with self.subTest(command=name):
+                self.assertEqual(found[name], options)
+
+
 class DocSequencesTest(unittest.TestCase):
     """Run the documented sequences with a synthetic plan: two roles with the native architecture."""
 
@@ -225,6 +252,14 @@ class DocSequencesTest(unittest.TestCase):
         # Publication is explicit and refuses synthetic data; nothing is written.
         self.play(section(runbook, "## Part 2"), values, expect_failure=("publish",))
         self.assertFalse((self.harness / "published").exists())
+
+    def test_reproduction_guide(self):
+        values = self.host_values("community", "host-a")
+        values["<out>"] = str(self.root / "out-community")
+        self.play((ROOT / "docs/REPRODUCE.md").read_text(), values)
+        dataset = self.root / "out-community/datasets" / values["<dataset-id>"]
+        self.assertIn('"origin": "synthetic"', (dataset / "manifest.json").read_text())
+        self.assertIn('"complete": false', (dataset / "manifest.json").read_text())  # the other role did not run
 
 
 if __name__ == "__main__":
