@@ -158,7 +158,7 @@ def _skip(stream, size: int, state: dict) -> None:
         size -= min(size, CHUNK)
 
 
-def read_members(archive: Path) -> tuple[dict[str, bytes], list[str]]:
+def read_members(archive: Path | bytes) -> tuple[dict[str, bytes], list[str]]:
     """Read the regular-file entries of a bundle. Every other header type is a problem.
 
     Headers are parsed one 512-byte block at a time, so a pax or GNU header is
@@ -167,9 +167,11 @@ def read_members(archive: Path) -> tuple[dict[str, bytes], list[str]]:
     """
     members, problems, state = {}, [], {"total": 0}
     try:
-        if os.stat(archive).st_size > MAX_ARCHIVE_BYTES:
+        size = len(archive) if isinstance(archive, bytes) else os.stat(archive).st_size
+        if size > MAX_ARCHIVE_BYTES:
             return {}, [f"the archive is larger than {MAX_ARCHIVE_BYTES} bytes"]
-        with open(archive, "rb") as file, gzip.GzipFile(fileobj=file, mode="rb") as stream:
+        with (io.BytesIO(archive) if isinstance(archive, bytes) else open(archive, "rb")) as file, \
+                gzip.GzipFile(fileobj=file, mode="rb") as stream:
             while True:
                 block = _read(stream, BLOCK, state)
                 if block == bytes(BLOCK):
@@ -203,12 +205,12 @@ def check_bundle(archive: Path) -> list[str]:
     return problems + (member_problems(members) if not problems else [])
 
 
-def read_bundle(archive: Path) -> dict[str, bytes]:
-    """Return the members of a valid bundle, or raise BenchError with every problem."""
+def read_bundle(archive: Path | bytes, name: Path | str | None = None) -> dict[str, bytes]:
+    """Return the members of a valid bundle (a path, or its bytes with a `name` for messages), or raise BenchError."""
     members, problems = read_members(archive)
     problems = problems or member_problems(members)
     if problems:
-        raise BenchError(f"invalid bundle {archive}:\n  " + "\n  ".join(problems))
+        raise BenchError(f"invalid bundle {name or archive}:\n  " + "\n  ".join(problems))
     return members
 
 

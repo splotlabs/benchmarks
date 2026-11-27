@@ -32,6 +32,8 @@ Run the commands from the repository root.
 ./bench identity          # harness identity as JSON: commit, tree, dirty flag, content digest
 ./bench validate PATH...  # check JSON and JSONL files, bundles and dataset directories
 ./bench verify --lock L --role R --work W   # untimed correctness pass of the prepared builds
+./bench assemble --lock LOCK.json BUNDLE... -o OUT [--select ROLE=RUN_ID] [--official]
+                          # check bundles and write OUT/datasets/<dataset_id>/
 ```
 
 The builds, the decoder adapters and the correctness pass are described in
@@ -56,7 +58,7 @@ with Python 3.11 and 3.14.
 | Path | Contents |
 | --- | --- |
 | `bench` | Entry script. |
-| `splotbench/` | The harness package. `cli.py` registers one parser per command module. `schema.py` validates, `provenance.py` records source, release and binary identity, `bundle.py` writes and reads bundles. |
+| `splotbench/` | The harness package. `cli.py` registers one parser per command module. `schema.py` validates, `provenance.py` records source, release and binary identity, `bundle.py` writes and reads bundles, `assemble.py` checks bundles and builds datasets. |
 | `splotbench/build.py`, `splotbench/adapters/`, `splotbench/verify.py` | Pinned decoder builds, one adapter per decoder (`splot`, `dav2d`, `avm`, `fixture`), the correctness pass (`bench verify`). |
 | `schemas/` | JSON Schema files: the source of truth for every data format. |
 | `docs/` | Format documentation (`FORMATS.md`) and the methodology (`METHODOLOGY.md`). |

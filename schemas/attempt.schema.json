@@ -47,10 +47,10 @@
                 "additionalProperties": false,
                 "required": ["wall_time", "cpu_time", "peak_rss", "first_frame_latency"],
                 "properties": {
-                  "wall_time": { "$ref": "common.schema.json#/$defs/count_or_null" },
-                  "cpu_time": { "$ref": "common.schema.json#/$defs/count_or_null" },
-                  "peak_rss": { "$ref": "common.schema.json#/$defs/count_or_null" },
-                  "first_frame_latency": { "$ref": "common.schema.json#/$defs/count_or_null" }
+                  "wall_time": { "$ref": "common.schema.json#/$defs/metric_or_null" },
+                  "cpu_time": { "$ref": "common.schema.json#/$defs/metric_or_null" },
+                  "peak_rss": { "$ref": "common.schema.json#/$defs/metric_or_null" },
+                  "first_frame_latency": { "$ref": "common.schema.json#/$defs/metric_or_null" }
                 }
               }
             }
