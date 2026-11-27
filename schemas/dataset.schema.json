@@ -39,6 +39,24 @@
         }
       }
     },
+    "excluded_runs": {
+      "description": "Runs that were imported but not selected. Their bundles stay in the dataset as evidence; they feed no cell.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["run_id", "role", "machine_id", "state", "class", "bundle", "reason"],
+        "properties": {
+          "run_id": { "$ref": "common.schema.json#/$defs/run_id" },
+          "role": { "$ref": "common.schema.json#/$defs/role" },
+          "machine_id": { "$ref": "common.schema.json#/$defs/machine_id" },
+          "state": { "$ref": "common.schema.json#/$defs/run_state" },
+          "class": { "$ref": "common.schema.json#/$defs/class" },
+          "bundle": { "$ref": "common.schema.json#/$defs/sized_file" },
+          "reason": { "type": "string" }
+        }
+      }
+    },
     "coverage": {
       "type": "object",
       "additionalProperties": false,
@@ -47,7 +65,13 @@
         "roles_expected": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/role" } },
         "roles_present": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/role" } },
         "cells_expected": { "$ref": "common.schema.json#/$defs/count" },
-        "cells_ok": { "$ref": "common.schema.json#/$defs/count" }
+        "cells_ok": { "$ref": "common.schema.json#/$defs/count" },
+        "status_counts": {
+          "description": "Cells of the whole expected matrix by status. Cells of a missing role count as not-run.",
+          "type": "object",
+          "propertyNames": { "enum": ["ok", "incorrect", "unsupported", "timeout", "error", "interrupted", "not-run"] },
+          "additionalProperties": { "$ref": "common.schema.json#/$defs/count" }
+        }
       }
     },
     "files": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/sized_file" } }
