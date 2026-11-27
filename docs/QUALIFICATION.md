@@ -99,6 +99,29 @@ before). Each role again gave `checks: 36 ok, 0 incorrect, 0 unsupported, 0 time
 and a complete run with 36 correctness rows and 36 attempt rows. The dav2d and avmdec build
 ids equal those of the first run on each architecture.
 
+## One lock on physical ARM hardware and on x86-64
+
+The lock of the second hosted run (`sha256:25d2648f69084ce5d532c91f98fdd3bc1d5fd0b2b5f88a018532dc069a2344c1`)
+also ran on physical hardware: the Apple silicon Mac of the first record ran its `arm64`
+role on 2026-11-27, with the harness checked out clean at the lock commit
+`1bb9b8982e19ded320e237dda8ad6a36b46c48a3`. `bench doctor` reported "clean checkout of the
+lock commit" and no `fail` line. The run class was `verified`.
+
+| Decoder | Commit | Build id | Binary SHA-256 |
+| --- | --- | --- | --- |
+| Splot | `768c1e05e87d5e98247f27f28856c6cf238040f4` | `bld-84e91c7be02ec67e` | `59274d18d8360b836559909e666781afc41b9069c0c4c52534cffc330a674533` |
+| dav2d | `33b0d3d234c6f7b6b64938ac7b93bc6e6e53b19c` | `bld-8c08ef1795444f02` | `3b654b388143978e6cb2412a38c83c1b2614bb29bf2c255f63ccc225f56ccd08` |
+| avmdec | `1cfda4fa4879ef2da411b02fe2f51597daab3451` | `bld-fea4e2bf742f40b4` | `b0539c454a60e721b07595aff157debd0c4364dc914e99b43a7bf64de0527c17` |
+
+Outcome: `checks: 36 ok, 0 incorrect, 0 unsupported, 0 timeout, 0 error`;
+`run arm64-20261127T191013Z-b4a98221: complete, 36 correctness rows, 36 attempt rows`; the
+bundle and the local dataset (36 `ok` cells) were valid. The dav2d and avmdec build ids and
+binary digests equal those of the first macOS record, which used another work directory.
+
+So one frozen lock ran its `arm64` role on physical ARM hardware (macOS) and on a hosted
+Linux arm64 virtual machine, and its `x86-64` role on a hosted Linux x86-64 virtual machine.
+Each host built the decoders itself and needed no account or credentials for the harness.
+
 ## Not verified
 
 - A physical Linux host. The Linux recipes, the correctness pass and a minimal runner
