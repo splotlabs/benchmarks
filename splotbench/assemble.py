@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import bundle, provenance, schema
-from .util import BenchError, canonical_json, sha256_bytes, sha256_file
+from .util import BenchError, canonical_json, sha256_bytes
 
 AGGREGATION = "summary/1"
 CELL_FIELDS = (
@@ -28,8 +28,8 @@ CELL_FIELDS = (
     "noisy", "frames", "wall_ns_median", "fps_median", "fps_min", "fps_max", "fps_mad", "cpu_ns_median",
     "peak_rss_bytes_median", "first_frame_latency_ns", "scaling_vs_1t",
 )  # fmt: skip
-# Precedence among failed measured attempts. A failed correctness row is its own status.
-ATTEMPT_FAILURES = ("incorrect", "timeout", "error", "interrupted")
+# Precedence among failed attempts (warm-ups included). A failed correctness row is its own status.
+ATTEMPT_FAILURES = ("incorrect", "timeout", "error", "unsupported")
 METRICS = {
     "throughput": {"unit": "frames/s", "direction": "higher"},
     "wall_time": {"unit": "ns", "direction": "lower"},
@@ -49,18 +49,23 @@ class Imported:
     host: dict
     builds: dict  # implementation id -> build manifest
     correctness: dict  # (implementation, case, threads) -> row
-    measured: dict  # (implementation, case, threads) -> measured attempt rows
+    attempts: dict  # (implementation, case, threads) -> attempt rows of both phases
 
 
-def _load_lock(path: Path) -> dict:
+def _campaign_id(lock_doc: dict) -> str:
+    return f"{lock_doc['lock']['name']}-{lock_doc['lock_digest'].removeprefix('sha256:')[:12]}"
+
+
+def _load_lock(path: Path) -> tuple[dict, bytes]:
     try:
-        document = schema.loads(path.read_bytes())
+        data = path.read_bytes()
+        document = schema.loads(data)
     except (OSError, ValueError) as error:
         raise BenchError(f"cannot read the lock {path}: {error}. Give the LOCK.json that `bench lock` wrote.") from None
     problems = schema.validate(document)
     if problems:
         raise BenchError(f"invalid lock {path}:\n  " + "\n  ".join(problems))
-    return document
+    return document, data
 
 
 def _rows(data: bytes) -> list:
@@ -70,7 +75,7 @@ def _rows(data: bytes) -> list:
 def _import(path: Path, lock_doc: dict) -> Imported:
     """Read a bundle and check that it belongs to the lock. Raise BenchError with every problem."""
     data = path.read_bytes()
-    members = bundle.read_bundle(path)
+    members = bundle.read_bundle(data, path)
     lock = lock_doc["lock"]
     embedded = schema.loads(members["lock.json"])
     if embedded["lock_digest"] != lock_doc["lock_digest"]:
@@ -83,7 +88,7 @@ def _import(path: Path, lock_doc: dict) -> Imported:
     run, host = schema.loads(members["run.json"]), schema.loads(members["host.json"])
     builds_list = schema.loads(members["builds.json"])
     problems = []
-    campaign = f"{lock['name']}-{lock_doc['lock_digest'].removeprefix('sha256:')[:12]}"
+    campaign = _campaign_id(lock_doc)
     if run["lock_digest"] != lock_doc["lock_digest"]:
         problems.append(f"run.json lock_digest {run['lock_digest']} differs from the lock")
     if run["campaign_id"] != campaign:
@@ -96,6 +101,13 @@ def _import(path: Path, lock_doc: dict) -> Imported:
             f"host architecture {host['fingerprint']['arch']} does not match role {run['role']} ({role['arch']}). "
             "Run the role on a machine with the right architecture."
         )
+    synthetic = lock["origin"] == "synthetic"
+    for what, value in [(f"run {run['run_id']}", run["class"])] + [(f"build {b['build_id']}", b["class"]) for b in builds_list]:
+        if synthetic != (value == "synthetic"):
+            problems.append(
+                f"{what} has class {value}, but the lock origin is {lock['origin']}: "
+                f"{'a synthetic lock needs synthetic' if synthetic else 'a standard lock allows no synthetic'} runs and builds"
+            )
     if host["machine_id"] != run["machine_id"] or host["fingerprint_digest"] != run["fingerprint_digest"]:
         problems.append("host.json machine_id or fingerprint_digest differs from run.json")
 
@@ -137,7 +149,7 @@ def _import(path: Path, lock_doc: dict) -> Imported:
         if key in correctness:
             problems.append(f"{where}: second correctness row for {key}")
         correctness[key] = row
-    measured, sequences = {}, set()
+    attempts, sequences, ok_counts = {}, set(), {}
     for number, row in enumerate(_rows(members["attempts.jsonl"]), 1):
         where = f"attempts.jsonl line {number}"
         known(row, where)
@@ -155,11 +167,23 @@ def _import(path: Path, lock_doc: dict) -> Imported:
             problems.append(f"{where}: outcome ok needs a wall_time of at least 1 ns")
         if frames["source"] == "decoder" and frames["reported"] is None:
             problems.append(f"{where}: frames.source is decoder but no frame count was reported")
-        if row["phase"] == "measure":
-            measured.setdefault(key, []).append(row)
+        if row["outcome"] == "ok" and row["case_id"] in cases:
+            locked = cases[row["case_id"]]["frames"]
+            if frames["expected"] != locked or frames["reported"] not in (None, locked):
+                problems.append(
+                    f"{where}: outcome ok with frames expected {frames['expected']}, reported {frames['reported']}, "
+                    f"but the lock has {locked} frames. A short decode must have outcome incorrect; "
+                    "this bundle is inconsistent."
+                )
+            ok_counts[key, row["phase"]] = ok_counts.get((key, row["phase"]), 0) + 1
+        attempts.setdefault(key, []).append(row)
+    required = {"warmup": lock["measurement"]["warmups"], "measure": lock["measurement"]["repetitions"]}
+    for (key, phase), count in sorted(ok_counts.items()):
+        if count > required[phase]:
+            problems.append(f"{key}: {count} ok {phase} attempts, the lock requires {required[phase]}")
     if problems:
         raise BenchError(f"{path}: incompatible bundle:\n  " + "\n  ".join(problems))
-    return Imported(path, data, sha256_file(path), run, host, builds, correctness, measured)
+    return Imported(path, data, sha256_bytes(data), run, host, builds, correctness, attempts)
 
 
 def _select_runs(runs: dict, select: dict) -> tuple[list[Imported], list[Imported]]:
@@ -194,13 +218,15 @@ def _cell(lock: dict, run: Imported, implementation: str, case: dict, threads: i
     measurement = lock["measurement"]
     key = (implementation, case["id"], threads)
     build = run.builds.get(implementation)
-    correctness, attempts = run.correctness.get(key), run.measured.get(key, [])
+    correctness, attempts = run.correctness.get(key), run.attempts.get(key, [])
     complete = run.run["state"] == "complete"
-    valid = [a for a in attempts if a["outcome"] == "ok"]
+    measured = [a for a in attempts if a["phase"] == "measure"]
+    valid = [a for a in measured if a["outcome"] == "ok"]
+    warmed = [a for a in attempts if a["phase"] == "warmup" and a["outcome"] == "ok"]
     cell = dict.fromkeys(CELL_FIELDS)
     cell.update(
         machine_id=run.run["machine_id"], case_id=case["id"], threads=threads, implementation=implementation,
-        build_id=build["build_id"] if build else None, n_measured=len(attempts), n_valid=len(valid), noisy=False,
+        build_id=build["build_id"] if build else None, n_measured=len(measured), n_valid=len(valid), noisy=False,
     )  # fmt: skip
     if correctness is None:
         cell["status"] = "not-run" if complete else "interrupted"
@@ -208,27 +234,23 @@ def _cell(lock: dict, run: Imported, implementation: str, case: dict, threads: i
         cell["status"] = correctness["outcome"]
     elif failed := next((o for o in ATTEMPT_FAILURES if any(a["outcome"] == o for a in attempts)), None):
         cell["status"] = failed
-    elif len(attempts) < measurement["repetitions"]:
-        cell["status"] = "error" if complete else "interrupted"
-    elif len(attempts) > measurement["repetitions"]:
-        cell["status"] = "error"
+    elif len(valid) == measurement["repetitions"] and len(warmed) == measurement["warmups"]:
+        cell["status"] = "ok"  # interrupted attempts are ignored: a resumed run repeats them
     else:
-        cell["status"] = "ok"
+        cell["status"] = "error" if complete else "interrupted"
     if cell["status"] != "ok":
         return cell
     walls = [a["workload"]["metrics"]["wall_time"] for a in valid]
-    counts = [a["workload"]["frames"] for a in valid]
-    frames = [c["reported"] if c["source"] == "decoder" else c["expected"] for c in counts]
-    fps = [f / (w / 1e9) for f, w in zip(frames, walls)]
-    wall_median, fps_median = statistics.median(walls), statistics.median(fps)
+    fps = [case["frames"] / (w / 1e9) for w in walls]
+    wall_median, fps_median = float(statistics.median(walls)), float(statistics.median(fps))
 
     def median_or_none(metric):
         values = [a["workload"]["metrics"][metric] for a in valid]
-        return None if None in values else statistics.median(values)
+        return None if None in values else float(statistics.median(values))
 
     cell.update(
-        frames=frames[0], wall_ns_median=wall_median, fps_median=fps_median, fps_min=min(fps), fps_max=max(fps),
-        fps_mad=statistics.median(abs(value - fps_median) for value in fps),
+        frames=case["frames"], wall_ns_median=wall_median, fps_median=fps_median, fps_min=min(fps), fps_max=max(fps),
+        fps_mad=float(statistics.median(abs(value - fps_median) for value in fps)),
         noisy=(max(walls) - min(walls)) * 1000 > measurement["noise_max_range_permille"] * wall_median,
         cpu_ns_median=median_or_none("cpu_time"), peak_rss_bytes_median=median_or_none("peak_rss"),
     )  # fmt: skip
@@ -318,6 +340,11 @@ def _official_problems(lock: dict, selected: list[Imported], cells: list[dict], 
         if run["class"] != "verified":
             problems.append(f"run {run['run_id']} has class {run['class']}, not verified")
         problems += [
+            f"build {b['build_id']} of run {run['run_id']} has class {b['class']}, not verified"
+            for b in imported.builds.values()
+            if b["class"] != "verified"
+        ]
+        problems += [
             f"run {run['run_id']} has no build of {entry['id']}"
             for entry in lock["implementations"]
             if entry["id"] not in imported.builds
@@ -336,7 +363,7 @@ def assemble(
 
     `harness` is the identity of the assembling harness (see `running_harness`); tests inject it.
     """
-    lock_doc = _load_lock(lock_path)
+    lock_doc, lock_bytes = _load_lock(lock_path)
     lock = lock_doc["lock"]
     runs: dict[str, Imported] = {}
     for path in bundles:
@@ -394,9 +421,10 @@ def assemble(
     dataset_id = "ds-" + sha256_bytes(canonical_json({
         "lock_digest": lock_doc["lock_digest"],
         "runs": [{"run_id": i.run["run_id"], "bundle": i.digest} for i in sorted(selected, key=lambda i: i.run["run_id"])],
+        "excluded": [{"run_id": i.run["run_id"], "bundle": i.digest} for i in sorted(excluded, key=lambda i: i.run["run_id"])],
         "aggregation": AGGREGATION, "origin": origin, "harness": harness["snapshot_sha256"],
     })).removeprefix("sha256:")[:16]  # fmt: skip
-    campaign_id = f"{lock['name']}-{lock_doc['lock_digest'].removeprefix('sha256:')[:12]}"
+    campaign_id = _campaign_id(lock_doc)
 
     def sized(path: str, data: bytes) -> dict:
         return {"path": path, "sha256": sha256_bytes(data), "bytes": len(data)}
@@ -411,7 +439,7 @@ def assemble(
     machines = []
     for imported in selected:
         run, host = imported.run, imported.host
-        starts = sorted(a["started_utc"] for rows in imported.measured.values() for a in rows)
+        starts = sorted(a["started_utc"] for rows in imported.attempts.values() for a in rows if a["phase"] == "measure")
         machines.append({
             "machine_id": run["machine_id"], "role": run["role"], "series_id": _series_id(lock, run, host),
             "run_id": run["run_id"], "run_state": run["state"], "class": run["class"],
@@ -482,7 +510,7 @@ def assemble(
     files = {
         "summary.json": _json(summary),
         "summary.csv": _csv(cells),
-        "lock.json": lock_path.read_bytes(),
+        "lock.json": lock_bytes,
         **{f"bundles/{i.run['run_id']}.tar.gz": i.data for i in selected + excluded},
     }
     manifest = {

@@ -25,7 +25,7 @@ Each identity has one meaning. Do not use one in place of another.
 | build_id | `bld-` + first 16 hex of sha256 of the canonical JSON of `{implementation, commit, snapshot_sha256, configuration, binary_sha256, libraries}` (`libraries` is the sorted list of library sha256 values) |
 | machine_id | chosen by the owner, `[a-z0-9][a-z0-9-]{1,40}`; never a MAC address or a serial number |
 | fingerprint_digest | `sha256:` of the canonical JSON of the observed host fingerprint; separate from machine_id |
-| dataset_id | `ds-` + first 16 hex of sha256 of the canonical JSON of `{lock digest, sorted run ids with bundle digests, aggregation version, origin, snapshot_sha256 of the assembling harness}` |
+| dataset_id | `ds-` + first 16 hex of sha256 of the canonical JSON of `{lock digest, sorted run ids with bundle digests, aggregation version, origin, sorted excluded run ids with bundle digests, snapshot_sha256 of the assembling harness}` |
 | series_id | `ser-` + 16 hex of a digest of `{corpus identity, methodology, build policy, suite, measurement settings, machine_id, fingerprint digest}` |
 
 Canonical JSON is `json.dumps(value, sort_keys=True, separators=(",", ":"),
@@ -135,7 +135,7 @@ its `lock.json` has the digest of the given lock, `run.json` names the campaign 
 digest, the role is in the lock, the host architecture is the role's `arch`, every build
 is a build of a lock implementation at the lock commit, and every row names a known run,
 build, case, thread budget and implementation. Attempt ids and sequence numbers are
-unique. Binary digests may differ between roles. The runs that feed one dataset agree on the source commit and snapshot digest of each implementation; a difference means modified source and is refused. A run without a build of an implementation has `not-run` cells for it.
+unique. Binary digests may differ between roles. A synthetic lock needs `synthetic` runs and builds; a standard lock allows none. The runs that feed one dataset agree on the source commit and snapshot digest of each implementation; a difference means modified source and is refused. A run without a build of an implementation has `not-run` cells for it.
 
 Run selection: the same run id with the same bytes is imported once. The same run id with
 other bytes is a conflict. Two different runs for one role need `--select ROLE=RUN_ID`.
@@ -150,7 +150,7 @@ harness commit of the lock, the commit that collected the data. `complete`
 is true when every role of the lock has a selected run, every selected run has state
 `complete`, and no cell is `not-run` or `interrupted`. A failed cell does not make a dataset
 incomplete. Origin is `synthetic` for a synthetic lock, `official` with `--official`, else
-`local`. `--official` needs every role, every run `complete` and class `verified`, a `verified` assembling harness, a build of every implementation in every run, no
+`local`. `--official` needs every role, every run `complete` and class `verified`, a `verified` assembling harness, `verified` builds, a build of every implementation in every run, no
 `not-run` or `interrupted` cell and a standard lock; else it exits 1, lists the reasons and
 writes nothing. An existing dataset directory with other content is refused; with the same
 content the command changes nothing. `manifest.coverage.status_counts` counts the whole
@@ -165,18 +165,19 @@ Rules, first match wins:
 
 1. No correctness row: `not-run` when the run is `complete`, else `interrupted`.
 2. The correctness outcome is not `ok`: that outcome (`incorrect`, `unsupported`, `timeout`, `error`).
-3. A measured attempt failed: the first of `incorrect`, `timeout`, `error`, `interrupted` that occurs.
-4. Fewer measured attempts than `repetitions`: `error` in a `complete` run, else `interrupted`.
-   More measured attempts than `repetitions`: `error`.
+3. Look at all attempts of the cell, warm-ups included. Any attempt with outcome `incorrect` makes the cell `incorrect`; else any `timeout` makes it `timeout`; else any `error`: `error`; else any `unsupported`: `unsupported`.
+4. Attempts with outcome `interrupted` are ignored when the cell has the number of `ok` warm-up attempts (`warmups`) and `ok` measured attempts (`repetitions`) that the lock requires; a resumed run repeats an interrupted attempt under a new sequence number. If the counts are not full, the cell is `interrupted` in a run that is not `complete`, and `error` in a `complete` run.
 5. Otherwise `ok`.
 
-Only `ok` cells have numbers. `n_measured` counts measured attempts, `n_valid` those with outcome `ok`.
+More `ok` attempts than the lock requires, an `ok` attempt whose `frames.expected` differs from the lock, or whose `frames.reported` is neither `null` nor equal to it, is an inconsistent bundle and is refused. A short decode must be recorded with outcome `incorrect`.
+
+Only `ok` cells have numbers. `n_measured` counts measured attempts, `n_valid` those with outcome `ok`. Statistics use the `ok` measured attempts only.
 
 ### Statistics (`summary/1`)
 
 All values come from the measured attempts of an `ok` cell; warm-ups never count. Nothing is rounded.
 
-- `fps` of an attempt = frames / (wall_time / 1e9). Frames are `frames.reported` when `frames.source` is `decoder`, else `frames.expected`.
+- `fps` of an attempt = frames / (wall_time / 1e9), with the frame count of the lock case. All medians, `fps_mad` and the `wall_ns_median` are floats.
 - `wall_ns_median`, `fps_median`: the median (the mean of the two middle values for an even count).
 - `fps_min`, `fps_max`; `fps_mad`: the median of |fps - `fps_median`|.
 - `noisy`: (max wall - min wall) * 1000 > `noise_max_range_permille` * median wall.

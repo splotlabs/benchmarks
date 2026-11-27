@@ -8,15 +8,16 @@ Throughput is fps = frames / wall seconds. Every case has 2 frames, so a wall ti
 import copy
 import csv
 import json
+from unittest import mock
 import shutil
 import tempfile
 import unittest
 from pathlib import Path
 
 from helpers import ROOT, bench
-from splotbench import assemble, schema, validate
+from splotbench import assemble, bundle, schema, validate
 from splotbench.util import BenchError
-from synthetic_runs import digest_of, full_cells, make_lock, write_run
+from synthetic_runs import FIXTURES, digest_of, full_cells, make_lock, write_run
 
 S = 1_000_000_000
 C8, C8B, C10 = "fixture-case-8bit", "fixture-case-8bit-b", "fixture-case-10bit"
@@ -381,7 +382,7 @@ class HarnessIdentityTest(Base):
     def test_standard_lock_gives_the_class_of_the_assembling_harness(self):
         lock = lock_with(lambda lock: lock.update(origin="standard"))
         self.lock_path.write_text(json.dumps(lock))
-        arm = self.run_bundle("arm64", ARM, lock=lock)
+        arm = self.run_bundle("arm64", ARM, lock=lock, run_class="development")
         dirty = {**HARNESS, "class": "development"}
         self.assertEqual(self.summary(self.assemble(arm, harness=dirty))["aggregation"]["harness"]["class"], "development")
 
@@ -444,6 +445,149 @@ class MissingBuildTest(Base):
         x86 = self.run_bundle("x86-64", cells, lock=lock, run_class="verified", run_id=X86_RUN,
                               machine="synthetic-x86", without=(B,))  # fmt: skip
         self.assertRejected(arm, x86, text=f"run {X86_RUN} has no build of {B}", official=True)
+
+
+class TrustBoundaryTest(Base):
+    def frames_edit(self, **frames):
+        def edit(documents):
+            documents["attempts"][1]["workload"]["frames"].update(frames)
+
+        return edit
+
+    def test_ok_attempt_must_match_the_lock_frame_count(self):
+        for change in ({"expected": 2000}, {"reported": 3}, {"reported": 0}):
+            with self.subTest(change=change):
+                bundle_path = self.arm(edit=self.frames_edit(**change))
+                self.assertRejected(bundle_path, text="but the lock has 2 frames")
+
+    def test_fps_uses_the_lock_frame_count(self):
+        def edit(documents):
+            documents["attempts"][1]["workload"]["frames"].update(source="decoder", reported=2)
+
+        cell = self.cell(self.summary(self.assemble(self.arm(edit=edit))), "synthetic-arm", C8, 1, A)
+        self.assertEqual((cell["frames"], cell["fps_median"]), (2, 2.0))
+
+    def test_official_needs_verified_builds(self):
+        lock = lock_with(lambda lock: lock.update(origin="standard"))
+        self.lock_path.write_text(json.dumps(lock))
+
+        def edit(documents):
+            documents["builds"][0]["class"] = "development"
+
+        arm = self.run_bundle("arm64", ARM, lock=lock, run_class="verified", edit=edit)
+        x86 = self.run_bundle("x86-64", X86, lock=lock, run_class="verified", run_id=X86_RUN, machine="synthetic-x86")
+        self.assertRejected(arm, x86, text="of run " + ARM_RUN + " has class development, not verified", official=True)
+
+    def test_run_and_build_classes_must_fit_the_lock_origin(self):
+        standard = lock_with(lambda lock: lock.update(origin="standard"))
+        self.lock_path.write_text(json.dumps(standard))
+        self.assertRejected(self.run_bundle(lock=standard), text="a standard lock allows no synthetic runs and builds")
+        self.lock_path.write_text(json.dumps(LOCK))
+        message = self.assertRejected(self.arm(run_class="development"), text="a synthetic lock needs synthetic")
+        self.assertIn("build bld-", message)
+
+    def test_one_read_of_the_bundle_gives_the_parsed_bytes(self):
+        bundle_path = self.arm()
+        real = bundle.read_bundle
+
+        def swap_after_read(archive, name=None):
+            bundle_path.write_bytes(b"swapped")  # a file change after the read must not matter
+            return real(archive, name)
+
+        with mock.patch.object(bundle, "read_bundle", swap_after_read):
+            target = self.assemble(bundle_path)
+        copied = (target / "bundles" / f"{ARM_RUN}.tar.gz").read_bytes()
+        self.assertEqual(self.summary(target)["machines"][0]["bundle"]["sha256"], assemble.sha256_bytes(copied))
+        self.assertEqual(validate.problems_for(target), [])
+
+    def test_metric_values_are_bounded_by_the_schema(self):
+        row = json.loads((FIXTURES / "run" / "attempts.jsonl").read_text().splitlines()[1])
+        for metric in ("wall_time", "cpu_time", "peak_rss"):
+            row["workload"]["metrics"][metric] = 10**15
+            self.assertEqual(schema.validate(row), [])
+            row["workload"]["metrics"][metric] = 10**15 + 1
+            self.assertNotEqual(schema.validate(row), [])
+            row["workload"]["metrics"][metric] = 1
+
+    def test_lock_with_repeated_ids_is_invalid(self):
+        def twice(lock):
+            lock["suite"]["cases"].append(copy.deepcopy(lock["suite"]["cases"][0]))
+            lock["implementations"].append(copy.deepcopy(lock["implementations"][0]))
+            lock["roles"]["arm64"]["threads"] = [1, 1]
+
+        problems = "\n".join(schema.validate(make_lock(twice)))
+        for text in ("suite.cases: 'fixture-case-8bit' appears more than once", "implementations: 'fixture-a'",
+                     "roles.arm64.threads: 1 appears more than once"):  # fmt: skip
+            self.assertIn(text, problems)
+
+
+class StatusRuleTest(Base):
+    def cell_of(self, cells, state="complete", edit=None):
+        bundle_path = self.run_bundle("arm64", {**ARM, (A, C8, 1): cells}, state=state, edit=edit)
+        return self.cell(self.summary(self.assemble(bundle_path)), "synthetic-arm", C8, 1, A)
+
+    def test_interrupted_attempt_is_ignored_when_the_counts_are_full(self):
+        cell = self.cell_of([S, "interrupted", S, S])
+        self.assertEqual((cell["status"], cell["n_measured"], cell["n_valid"]), ("ok", 4, 3))
+        self.assertEqual(cell["fps_median"], 2.0)
+
+    def test_short_counts_are_error_in_a_complete_run_and_interrupted_otherwise(self):
+        self.assertEqual(self.cell_of([S, S, "interrupted"])["status"], "error")
+        self.assertEqual(self.cell_of([S, S, "interrupted"], state="interrupted")["status"], "interrupted")
+
+    def test_a_failed_warm_up_counts(self):
+        def edit(documents):
+            documents["attempts"][0]["outcome"] = "incorrect"  # the warm-up of the first cell
+
+        self.assertEqual(self.cell_of([S, S, S], edit=edit)["status"], "incorrect")
+
+    def test_more_ok_attempts_than_the_lock_requires_is_refused(self):
+        bundle_path = self.run_bundle("arm64", {**ARM, (A, C8, 1): [S] * 4})
+        self.assertRejected(bundle_path, text="4 ok measure attempts, the lock requires 3")
+
+
+class StatisticsTest(Base):
+    def test_even_repetition_count_uses_the_two_middle_values(self):
+        lock = lock_with(lambda lock: lock["measurement"].update(repetitions=4))
+        self.lock_path.write_text(json.dumps(lock))
+        cells = full_cells(lock, "arm64", {(A, C8, 1): [S, 2 * S, 4 * S, 5 * S]}, default=(S,) * 4)
+        archive = write_run(self.tmp, lock, "arm64", cells, machine_id="synthetic-arm", run_id=ARM_RUN)[0]
+        cell = self.cell(self.summary(self.assemble(archive)), "synthetic-arm", C8, 1, A)
+        # Walls 1, 2, 4, 5 s: median 3 s. fps 2, 1, 0.5, 0.4: sorted 0.4, 0.5, 1, 2: median 0.75.
+        # Deviations 1.25, 0.25, 0.25, 0.35: sorted 0.25, 0.25, 0.35, 1.25: MAD 0.3.
+        self.assertEqual((cell["wall_ns_median"], cell["fps_median"]), (3e9, 0.75))
+        self.assertAlmostEqual(cell["fps_mad"], 0.3)
+        for field in ("wall_ns_median", "fps_median", "fps_mad", "cpu_ns_median"):
+            self.assertIsInstance(cell[field], float)
+
+    def test_medians_are_floats_for_an_odd_count_too(self):
+        doc = self.summary(self.assemble(self.arm()))
+        cell = self.cell(doc, "synthetic-arm", C8, 2, B)
+        for field in ("wall_ns_median", "fps_median", "fps_mad", "cpu_ns_median", "peak_rss_bytes_median"):
+            self.assertIsInstance(cell[field], float)
+        csv_text = (self.out / "datasets" / doc["dataset_id"] / "summary.csv").read_text()
+        self.assertIn("1000000000.0", csv_text)
+
+    def test_noise_boundary_at_50_permille(self):
+        ms = 1_000_000
+        for high, noisy in ((1025, False), (1026, True)):
+            with self.subTest(high=high):
+                # Range (high - 975) ms against 50 permille of the 1000 ms median: 50 ms is allowed, 51 ms is noisy.
+                bundle_path = self.run_bundle("arm64", {**ARM, (A, C8, 2): [975 * ms, 1000 * ms, high * ms]})
+                cell = self.cell(self.summary(self.assemble(bundle_path)), "synthetic-arm", C8, 2, A)
+                self.assertEqual(cell["noisy"], noisy)
+                shutil.rmtree(self.out)
+
+
+class ExcludedEvidenceTest(Base):
+    def test_excluded_runs_are_part_of_the_dataset_id(self):
+        keep, other = self.arm(), self.run_bundle("arm64", ARM, run_id="arm64-20260102T000000Z-aaaaaaaa")
+        third = self.run_bundle("arm64", {**ARM, (A, C8, 1): [9 * S] * 3}, run_id="arm64-20260103T000000Z-bbbbbbbb")
+        select = {"arm64": ARM_RUN}
+        one = self.assemble(keep, other, select=select)
+        two = self.assemble(keep, other, third, select=select)
+        self.assertNotEqual(one.name, two.name)
+        self.assertEqual(self.summary(one)["cells"], self.summary(two)["cells"])
 
 
 class CompletenessTest(Base):
