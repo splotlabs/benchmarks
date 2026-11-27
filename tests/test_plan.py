@@ -371,6 +371,31 @@ class SchemeAndLimitsTest(TempTest):
         self.assertEqual([p.name for p in self.temporary.iterdir() if p.name.endswith(".tmp")], [])
 
 
+class CommittedPlansTest(unittest.TestCase):
+    def test_every_committed_plan_is_valid_and_campaign_plans_pin_commits(self):
+        plans = sorted((ROOT / "campaigns").glob("*.toml"))
+        self.assertIn(ROOT / "campaigns" / "template.toml", plans)
+        names = []
+        for path in plans:
+            with self.subTest(plan=path.name):
+                parsed = plan.parse_plan(path)
+                names.append(parsed["name"])
+                if path.name != "template.toml":
+                    # A campaign plan pins full commits: machines that lock it at different times measure the same sources.
+                    for implementation in parsed["implementation"]:
+                        self.assertRegex(implementation["select"], r"^[0-9a-f]{40}$")
+        self.assertEqual(len(names), len(set(names)))
+
+    def test_plans_of_one_round_differ_only_in_name_and_role(self):
+        arm = plan.parse_plan(ROOT / "campaigns" / "2026-11-full-arm64.toml")
+        x86 = plan.parse_plan(ROOT / "campaigns" / "2026-11-full-x86-64.toml")
+        self.assertEqual((list(arm["roles"]), list(x86["roles"])), (["arm64"], ["x86-64"]))
+        for key in arm.keys() | x86.keys():
+            if key not in ("name", "roles"):
+                self.assertEqual(arm[key], x86[key], key)
+        self.assertEqual(arm["roles"]["arm64"]["threads"], x86["roles"]["x86-64"]["threads"])
+
+
 class RealCorpusTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
