@@ -77,6 +77,7 @@ Exit codes: 0 success, 1 the operation ran and the result is a failure,
 | [docs/RUNBOOK-FIRST-HOST.md](docs/RUNBOOK-FIRST-HOST.md) | The first machine of a two-machine campaign (normally arm64), with a prompt for an AI agent. |
 | [docs/RUNBOOK-SECOND-HOST.md](docs/RUNBOOK-SECOND-HOST.md) | The second machine (normally x86-64): reuse the first lock, with a prompt for an AI agent. |
 | [docs/RUNBOOK-ASSEMBLE-PUBLISH.md](docs/RUNBOOK-ASSEMBLE-PUBLISH.md) | Collect bundles, assemble, inspect and, on explicit request, publish. |
+| [docs/RUNBOOK-SINGLE-HOST.md](docs/RUNBOOK-SINGLE-HOST.md) | One machine works alone: its own campaign from a plan in `campaigns/`, its own dataset, its own publication. With a prompt for an AI agent. |
 | [docs/REPRODUCE.md](docs/REPRODUCE.md) | Run and inspect a benchmark on one machine, without credentials. Results are `local`. |
 | [docs/METHODOLOGY.md](docs/METHODOLOGY.md) | Builds, timing boundary, correctness, repetitions, aggregation and identities. |
 | [docs/FORMATS.md](docs/FORMATS.md) | Data formats, identities and dataset rules. |
@@ -99,7 +100,7 @@ with Python 3.11 and 3.14.
 | --- | --- |
 | `bench` | Entry script. |
 | `splotbench/` | The harness package. `cli.py` registers one parser per command module. `schema.py` validates, `provenance.py` records source, release and binary identity, `bundle.py` writes and reads bundles, `assemble.py` checks bundles and builds datasets, `publish.py` copies a dataset into `published/` on explicit command. |
-| `corpus/`, `campaigns/` | The pinned corpus manifest and suites, and the campaign plan template. `plan.py` makes locks and the matrix, `corpus.py` verifies the stream cache. |
+| `corpus/`, `campaigns/` | The pinned corpus manifest and suites, the campaign plan template and the plans of real campaigns (pinned decoder commits). `plan.py` makes locks and the matrix, `corpus.py` verifies the stream cache. |
 | `splotbench/build.py`, `splotbench/adapters/`, `splotbench/verify.py` | Pinned decoder builds, one adapter per decoder (`splot`, `dav2d`, `avm`, `fixture`), the correctness pass (`bench verify`). |
 | `splotbench/host.py`, `splotbench/run.py` | Host fingerprint, machine id and host lock; `bench doctor`, `bench run` (correctness pass, timed phase, resume) and `bench bundle`. |
 | `published/` | Published official datasets and `index.json`, added only with `bench publish` through a pull request. Existing dataset directories never change. |

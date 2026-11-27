@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# Campaign 2026-11, full suite, one machine: the x86-64 role.
+# Each machine runs its own campaign from its plan and publishes its own dataset.
+# The decoder commits are pinned, so both machines measure the same sources:
+# they were the newest upstream `main` commits on 2026-11-27.
+#   ./bench lock campaigns/2026-11-full-x86-64.toml -o <lock>
+# See docs/RUNBOOK-SINGLE-HOST.md.
+
+# Campaign name. The campaign id is this name plus 12 hex digits of the lock digest.
+name = "full-2026-11-x86-64"
+# "standard" for real decoders. "synthetic" is for harness tests and allows only the `fixture` adapter.
+origin = "standard"
+# "quick" (six 1920x1080 streams) or "full" (every stream from 1280x720 up), see corpus/suites.toml.
+# A quick campaign has its own id and is not a full campaign.
+suite = "full"
+
+warmups = 1                   # untimed rounds before the timed rounds of a cell
+repetitions = 3               # timed rounds per cell
+timeout_s = 1800              # per decoder process
+order_seed = 1                # seed of the decoder-order rotation
+noise_max_range_permille = 50 # (max - min) / median above this marks a cell noisy (50 = 5.0 %)
+
+# Each implementation: a branch, a tag or a full 40-hex commit in `select`.
+# The lock records the commit. `release` is set only when an upstream tag that fully
+# matches `release_tag_pattern` points at exactly that commit; otherwise it is a development build.
+
+[[implementation]]
+id = "splot"
+name = "Splot"
+adapter = "splot"
+repository = "https://github.com/splotlabs/splot.git"
+select = "afbfa5e9b81e81477aecbcb785d935997cf07089"
+release_tag_pattern = 'v(?P<version>[0-9]+\.[0-9]+\.[0-9]+)'
+release_url_template = "https://github.com/splotlabs/splot/releases/tag/{tag}"
+
+[[implementation]]
+id = "dav2d"
+name = "dav2d"
+adapter = "dav2d"
+repository = "https://code.videolan.org/videolan/dav2d.git"
+select = "33b0d3d234c6f7b6b64938ac7b93bc6e6e53b19c"
+release_tag_pattern = '(?P<version>[0-9]+\.[0-9]+\.[0-9]+)'
+release_url_template = "https://code.videolan.org/videolan/dav2d/-/tags/{tag}"
+
+[[implementation]]
+id = "avmdec"
+name = "avmdec"
+adapter = "avm"
+repository = "https://github.com/AOMediaCodec/avm.git"
+select = "1cfda4fa4879ef2da411b02fe2f51597daab3451"
+# The research-v* tags are not releases of the final codec. This pattern must not match them.
+release_tag_pattern = 'v(?P<version>[0-9]+\.[0-9]+\.[0-9]+)'
+release_url_template = "https://github.com/AOMediaCodec/avm/releases/tag/{tag}"
+
+# Host roles. A role needs a native machine of that architecture. Adjust the thread lists
+# to the cores of your machines; the lock records them.
+
+[roles.x86-64]
+arch = "x86_64"
+threads = [1, 2, 4, 8]
