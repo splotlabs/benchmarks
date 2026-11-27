@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# Synthetic plan for tests. The tests replace @REPO_A@ and @REPO_B@ with file:// repositories
+# and write the corpus files next to the plan.
+name = "synthetic-campaign"
+origin = "synthetic"
+suite = "quick"
+corpus = "corpus.toml"
+suites = "suites.toml"
+warmups = 1
+repetitions = 3
+timeout_s = 60
+order_seed = 7
+noise_max_range_permille = 50
+
+[[implementation]]
+id = "fixture-a"
+name = "Fixture A"
+adapter = "fixture"
+repository = "@REPO_A@"
+select = "@SELECT_A@"
+release_tag_pattern = 'v(?P<version>[0-9]+\.[0-9]+\.[0-9]+)'
+release_url_template = "https://example.invalid/synthetic/fixture-a/releases/{tag}"
+
+[[implementation]]
+id = "fixture-b"
+adapter = "fixture"
+repository = "@REPO_B@"
+select = "main"
+
+[roles.arm64]
+arch = "aarch64"
+threads = [1, 2]
+
+[roles.x86-64]
+arch = "x86_64"
+threads = [1, 2, 4]

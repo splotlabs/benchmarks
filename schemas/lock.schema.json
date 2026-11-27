@@ -85,7 +85,7 @@
           "properties": {
             "warmups": { "type": "integer", "minimum": 0 },
             "repetitions": { "type": "integer", "minimum": 1 },
-            "timeout_s": { "type": "integer", "minimum": 1 },
+            "timeout_s": { "type": "integer", "minimum": 1, "maximum": 86400 },
             "order": {
               "type": "object",
               "additionalProperties": false,
@@ -140,6 +140,11 @@
         "chroma": { "$ref": "common.schema.json#/$defs/chroma" },
         "frames": { "type": "integer", "minimum": 1 },
         "film_grain": { "type": ["boolean", "null"] },
+        "mirrors": {
+          "description": "Optional extra sources, tried in order after url. Each must give the same bytes.",
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/url" }
+        },
         "reference": {
           "type": "object",
           "additionalProperties": false,

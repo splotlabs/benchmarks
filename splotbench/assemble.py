@@ -19,7 +19,7 @@ import statistics
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import bundle, provenance, schema
+from . import bundle, plan, provenance, schema
 from .util import BenchError, canonical_json, sha256_bytes
 
 AGGREGATION = "summary/1"
@@ -384,17 +384,16 @@ def assemble(
 
     cases = lock["suite"]["cases"]
     ids = [entry["id"] for entry in lock["implementations"]]
+    by_id = {case["id"]: case for case in cases}
     cells = [
-        _cell(lock, imported, implementation, case, threads)
+        _cell(lock, imported, cell.implementation, by_id[cell.case], cell.threads)
         for imported in selected
-        for case in cases
-        for threads in sorted(lock["roles"][imported.run["role"]]["threads"])
-        for implementation in ids
+        for cell in plan.enumerate_cells(lock_doc, imported.run["role"])
     ]
     index = {(c["machine_id"], c["case_id"], c["threads"], c["implementation"]): c for c in cells}
     present = {imported.run["role"] for imported in selected}
     missing = sorted(set(lock["roles"]) - present)
-    missing_cells = sum(len(lock["roles"][r]["threads"]) for r in missing) * len(cases) * len(ids)
+    missing_cells = sum(len(plan.enumerate_cells(lock_doc, role)) for role in missing)
     counts = _status_counts(cells, missing_cells)
     complete = not missing and all(i.run["state"] == "complete" for i in selected)
     complete = complete and not counts.get("not-run") and not counts.get("interrupted")
@@ -520,7 +519,7 @@ def assemble(
         "runs": [run_entry(i) for i in selected],
         "coverage": {
             "roles_expected": sorted(lock["roles"]), "roles_present": sorted(present),
-            "cells_expected": sum(len(r["threads"]) for r in lock["roles"].values()) * len(cases) * len(ids),
+            "cells_expected": len(plan.enumerate_cells(lock_doc)),
             "cells_ok": counts.get("ok", 0), "status_counts": counts,
         },
         "files": [sized(path, data) for path, data in sorted(files.items())],
