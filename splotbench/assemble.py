@@ -36,6 +36,7 @@ METRICS = {
     "peak_rss": {"unit": "bytes", "direction": "lower"},
     "first_frame_latency": {"unit": "ns", "direction": "lower"},
 }
+STATUSES = ("ok", "incorrect", "unsupported", "timeout", "error", "interrupted", "not-run")
 DOWNLOADS = {"manifest": "manifest.json", "csv": "summary.csv", "lock": "lock.json", "checksums": bundle.CHECKSUMS}
 
 
@@ -262,12 +263,11 @@ def _cell(lock: dict, run: Imported, implementation: str, case: dict, threads: i
 
 
 def _status_counts(cells: list[dict], missing: int) -> dict:
-    counts = {}
+    counts = dict.fromkeys(STATUSES, 0)
     for cell in cells:
-        counts[cell["status"]] = counts.get(cell["status"], 0) + 1
-    if missing:
-        counts["not-run"] = counts.get("not-run", 0) + missing
-    return dict(sorted(counts.items()))
+        counts[cell["status"]] += 1
+    counts["not-run"] += missing
+    return counts
 
 
 def _aggregates(lock: dict, machines: list[str], cells: dict) -> list[dict]:
@@ -285,8 +285,11 @@ def _aggregates(lock: dict, machines: list[str], cells: dict) -> list[dict]:
                     if a["status"] == b["status"] == "ok":
                         ratios.append(a["fps_median"] / b["fps_median"])
                     else:
-                        reasons = [f"{i}: {c['status']}" for i, c in ((implementation, a), (baseline, b)) if c["status"] != "ok"]
-                        excluded.append({"case_id": case_id, "reason": ", ".join(reasons)})
+                        failed = sorted((c["implementation"], c["status"]) for c in (a, b) if c["status"] != "ok")
+                        excluded += [
+                            {"case_id": case_id, "implementation": i, "status": status, "reason": f"{i}: {status}"}
+                            for i, status in failed
+                        ]
                 result.append({
                     "machine_id": machine, "threads": threads, "bit_depth": depth, "implementation": implementation,
                     "baseline": baseline,
@@ -396,7 +399,7 @@ def assemble(
     missing_cells = sum(len(plan.enumerate_cells(lock_doc, role)) for role in missing)
     counts = _status_counts(cells, missing_cells)
     complete = not missing and all(i.run["state"] == "complete" for i in selected)
-    complete = complete and not counts.get("not-run") and not counts.get("interrupted")
+    complete = complete and not counts["not-run"] and not counts["interrupted"]
     if official:
         problems = _official_problems(lock, selected, cells, missing, harness)
         if problems:
@@ -480,7 +483,7 @@ def assemble(
     measurement = lock["measurement"]
     coverage = {  # one object, written into the summary and the manifest
         "roles_expected": sorted(lock["roles"]), "roles_present": sorted(present),
-        "cells_expected": len(plan.enumerate_cells(lock_doc)), "cells_ok": counts.get("ok", 0), "status_counts": counts,
+        "cells_expected": len(plan.enumerate_cells(lock_doc)), "cells_ok": counts["ok"], "status_counts": counts,
     }  # fmt: skip
     summary = {
         "schema": "splotbench.summary/1", "dataset_id": dataset_id, "campaign_id": campaign_id, "name": lock["name"],

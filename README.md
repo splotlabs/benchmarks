@@ -4,8 +4,8 @@ A reproducible benchmark harness for three AV2 decoders: Splot, dav2d and avmdec
 The harness is a small command-line tool, `bench`. It does not need a checkout of
 the Splot repository or of the website.
 
-This repository is new. The harness is not complete and **no benchmark results
-exist yet**. The work is tracked in the Epic
+The harness is implemented. **No benchmark results are published yet.** The first
+official campaign is a later request of the owner. The work is tracked in the Epic
 [splotlabs/splot#2046](https://github.com/splotlabs/splot/issues/2046).
 
 ## Prerequisites
@@ -14,31 +14,44 @@ exist yet**. The work is tracked in the Epic
   nothing to install.
 - Git.
 
+Python and Git are enough for `validate`, `assemble`, `publish` and the tests.
+`bench prepare` also needs the decoder build tools: `cargo` with `rustup`, `meson`,
+`ninja`, `cmake`, `perl`, a C compiler, and `nasm` on x86-64
+([docs/RUNBOOK-FIRST-HOST.md](docs/RUNBOOK-FIRST-HOST.md#1-check-the-host)).
+
 ## Supported platforms
 
-- Linux x86-64, native.
-- Linux arm64, native.
-- macOS arm64, native.
+The harness targets Linux x86-64, Linux arm64 and macOS arm64, native only. What was
+exercised:
+
+- The unit tests run in CI on Linux x86-64, Linux arm64 and macOS arm64.
+- The real decoder builds, the correctness pass and a short runner smoke ran natively
+  only on macOS arm64 ([docs/QUALIFICATION.md](docs/QUALIFICATION.md)).
+- The Linux build recipes are not verified on a native host yet
+  ([issue 12](https://github.com/splotlabs/benchmarks/issues/12)).
 
 Windows is not supported.
 
 ## Use
 
 Run the commands from the repository root. This synopsis shows every command and
-option. The runbooks below give the commands in order.
+every option. The runbooks below give the commands in order.
 
 ```text
 ./bench --help            # commands and exit codes
 ./bench --version         # harness version and commit
 ./bench identity          # harness identity as JSON: commit, tree, dirty flag, content digest
-./bench validate PATH...  # check JSON and JSONL files, bundles and dataset directories
+./bench validate PATH... [--immutable-since REF]
+                          # check JSON and JSONL files, bundles, dataset and published directories
 ./bench lock PLAN.toml -o LOCK.json          # resolve a campaign plan once into a lock
 ./bench matrix --lock LOCK [--role ROLE]     # list every expected cell
 ./bench prepare --lock LOCK --role ROLE --work W [--jobs N] [--offline]
                           # fetch and verify the corpus, fetch and build the pinned decoders
-./bench verify --lock L --role R --work W   # untimed correctness pass of the prepared builds
-./bench doctor --lock L --role R --work W [--machine-id ID]   # preflight checks; changes nothing
-./bench run --lock L --role R --work W --machine-id ID [--resume RUN_ID]
+./bench verify --lock LOCK --role ROLE --work W [--case ID] [--implementation ID] [--threads N]
+                          # untimed correctness pass of the prepared builds
+./bench doctor --lock LOCK --role ROLE --work W [--machine-id ID]
+                          # preflight checks; changes nothing
+./bench run --lock LOCK --role ROLE --work W --machine-id ID [--resume RUN_ID]
                           # correctness pass and timed attempts into W/runs/<run_id>/
 ./bench bundle --work W --run RUN_ID -o FILE.tar.gz   # portable bundle of one run; no upload
 ./bench assemble --lock LOCK.json BUNDLE... -o OUT [--select ROLE=RUN_ID] [--official]
@@ -66,6 +79,7 @@ Exit codes: 0 success, 1 the operation ran and the result is a failure,
 | [docs/METHODOLOGY.md](docs/METHODOLOGY.md) | Builds, timing boundary, correctness, repetitions, aggregation and identities. |
 | [docs/FORMATS.md](docs/FORMATS.md) | Data formats, identities and dataset rules. |
 | [docs/PUBLISHING.md](docs/PUBLISHING.md) | How a dataset reaches `published/`. |
+| [docs/QUALIFICATION.md](docs/QUALIFICATION.md) | What was really checked, and what was not. A record, not a result. |
 | [docs/ENCODER-EXTENSION.md](docs/ENCODER-EXTENSION.md) | Design note for a future encoder workload. Not implemented. |
 
 ## Tests

@@ -147,7 +147,7 @@ class DatasetTest(Base):
         # 2 roles x 3 cases x 2 thread budgets x 2 implementations; arm has 3 failed cells.
         coverage = manifest["coverage"]
         self.assertEqual((coverage["cells_expected"], coverage["cells_ok"]), (24, 21))
-        self.assertEqual(coverage["status_counts"], {"incorrect": 1, "ok": 21, "timeout": 1, "unsupported": 1})
+        self.assertEqual(coverage["status_counts"], {"ok": 21, "incorrect": 1, "unsupported": 1, "timeout": 1, "error": 0, "interrupted": 0, "not-run": 0})
         self.assertEqual([m["role"] for m in self.doc["machines"]], ["arm64", "x86-64"])
         bundle_entry = self.doc["machines"][0]["bundle"]
         self.assertEqual(bundle_entry["sha256"], digest_of(self.target / bundle_entry["path"]))
@@ -213,15 +213,23 @@ class DatasetTest(Base):
         partial = self.aggregate(self.doc, "synthetic-arm", 2, 8, A, B)
         self.assertAlmostEqual(partial["geomean_ratio"], 2)
         self.assertEqual((partial["n_matched"], partial["n_expected"]), (1, 2))
-        self.assertEqual(partial["excluded"], [{"case_id": C8B, "reason": "fixture-b: unsupported"}])
+        self.assertEqual(partial["excluded"], [{"case_id": C8B, "implementation": B, "status": "unsupported", "reason": "fixture-b: unsupported"}])
         # 10-bit is separate: with 1 thread the only case is incorrect for fixture-b.
         none = self.aggregate(self.doc, "synthetic-arm", 1, 10, A, B)
         self.assertEqual((none["geomean_ratio"], none["n_matched"], none["n_expected"]), (None, 0, 1))
-        self.assertEqual(none["excluded"], [{"case_id": C10, "reason": "fixture-b: incorrect"}])
+        self.assertEqual(none["excluded"], [{"case_id": C10, "implementation": B, "status": "incorrect", "reason": "fixture-b: incorrect"}])
         timeout = self.aggregate(self.doc, "synthetic-arm", 2, 10, B, A)
-        self.assertEqual(timeout["excluded"], [{"case_id": C10, "reason": "fixture-a: timeout"}])
+        self.assertEqual(timeout["excluded"], [{"case_id": C10, "implementation": A, "status": "timeout", "reason": "fixture-a: timeout"}])
         # The other machine has its own aggregate: ratios 2 and 1, geometric mean sqrt(2).
         self.assertAlmostEqual(self.aggregate(self.doc, "synthetic-x86", 1, 8, A, B)["geomean_ratio"], 2**0.5)
+
+    def test_schema_requires_all_status_counts_and_structured_exclusions(self):
+        broken = copy.deepcopy(self.doc)
+        del broken["coverage"]["status_counts"]["error"]
+        self.assertTrue(any("error" in p for p in schema.validate(broken)))
+        broken = copy.deepcopy(self.doc)
+        next(a for a in broken["aggregates"] if a["excluded"])["excluded"][0].pop("status")
+        self.assertTrue(any("status" in p for p in schema.validate(broken)))
 
     def test_every_pair_machine_threads_and_depth_has_an_aggregate(self):
         # 2 machines x 2 thread budgets x 2 bit depths x 2 ordered pairs
@@ -630,6 +638,18 @@ class CompletenessTest(Base):
         doc = self.summary(target)
         self.assertEqual(self.cell(doc, "synthetic-arm", C8B, 2, A)["status"], "not-run")
         self.assertFalse(doc["complete"])
+
+    def test_pair_with_two_failing_cells_has_one_exclusion_per_implementation(self):
+        cells = {**ARM, (A, C8B, 1): "timeout", (B, C8B, 1): "incorrect"}
+        doc = self.summary(self.assemble(self.run_bundle("arm64", cells), self.x86()))
+        both = [
+            {"case_id": C8B, "implementation": A, "status": "timeout", "reason": "fixture-a: timeout"},
+            {"case_id": C8B, "implementation": B, "status": "incorrect", "reason": "fixture-b: incorrect"},
+        ]
+        for implementation, baseline in ((A, B), (B, A)):  # the order is by implementation id in both directions
+            aggregate = self.aggregate(doc, "synthetic-arm", 1, 8, implementation, baseline)
+            self.assertEqual((aggregate["excluded"], aggregate["n_matched"]), (both, 1))
+        self.assertEqual(schema.validate(doc), [])
 
     def test_failed_attempt_precedence(self):
         cells = {**ARM, (A, C8, 1): [S, "error", "timeout"], (B, C8, 1): [S, "error", "incorrect"]}
