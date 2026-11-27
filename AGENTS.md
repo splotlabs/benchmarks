@@ -39,6 +39,9 @@ These rules are canonical. `CLAUDE.md` points to this file.
   their names say so. Fixture decoders are `fixture-a`, `fixture-b`, never the
   name of a real decoder.
 - Do not commit stream bytes, builds, raw runs, bundles or generated datasets.
+  One exception: official datasets under `published/`. Add them only with
+  `bench publish` and only through a pull request. Never change or delete an
+  existing dataset directory there. Synthetic data never goes there.
 - Do not put secrets, account identifiers, private paths or user names in files,
   records or commits.
 

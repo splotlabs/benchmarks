@@ -34,7 +34,8 @@ class CliTest(unittest.TestCase):
         self.assertIn("exit codes:", done.stdout)
         subparsers = next(a for a in build_parser()._actions if isinstance(a, argparse._SubParsersAction))
         self.assertEqual(
-            sorted(subparsers.choices), ["assemble", "identity", "lock", "matrix", "prepare", "validate", "verify"]
+            sorted(subparsers.choices),
+            ["assemble", "identity", "lock", "matrix", "prepare", "publish", "validate", "verify"],
         )
         for command in subparsers.choices:
             self.assertEqual(bench(ROOT, command, "--help").returncode, 0)
