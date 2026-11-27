@@ -77,6 +77,47 @@ class CorpusTest(Campaign):
         self.assertFalse(self.cached("synthetic-10bit").exists())
         self.assertEqual([p.name for p in (self.work / "corpus").iterdir() if p.name.endswith(".part")], [])
 
+    def test_oversized_source_is_cut_off_early(self):
+        (self.source / "synthetic-8bit.ivf").write_bytes(b"x" * (1 << 20))
+        case = next(c for c in self.lock["lock"]["suite"]["cases"] if c["id"] == "synthetic-8bit")
+        served, real_urlopen, sizes = [0], urllib.request.urlopen, []
+
+        class Counting:
+            def __init__(self, response):
+                self.response = response
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return self.response.__exit__(*exc)
+
+            def read(self, count):
+                data = self.response.read(count)
+                served[0] += len(data)
+                sizes.append(max((p.stat().st_size for p in (self.work / "corpus").glob("*.part")), default=0))
+                return data
+
+        Counting.work = self.work
+        with (
+            mock.patch.object(corpus, "CHUNK", 16),
+            mock.patch.object(urllib.request, "urlopen", lambda url, timeout: Counting(real_urlopen(url, timeout=timeout))),
+        ):
+            with self.assertRaises(BenchError) as raised:
+                corpus.ensure(self.lock, self.work)
+        self.assertLessEqual(served[0], case["bytes"] + 1)
+        self.assertLessEqual(max(sizes), case["bytes"] + 16)
+        for part in ("synthetic-8bit", case["url"], str(case["bytes"])):
+            self.assertIn(part, str(raised.exception))
+        self.assertEqual(list((self.work / "corpus").iterdir()), [])
+
+    def test_timeout_is_set(self):
+        seen = []
+        real = urllib.request.urlopen
+        with mock.patch.object(urllib.request, "urlopen", lambda url, timeout=None: (seen.append(timeout), real(url))[1]):
+            corpus.ensure(self.lock, self.work)
+        self.assertEqual(set(seen), {corpus.TIMEOUT_S})
+
     def test_wrong_bytes_replace_nothing_in_the_cache(self):
         corpus.ensure(self.lock, self.work)
         self.cached("synthetic-8bit").write_bytes(b"bad")

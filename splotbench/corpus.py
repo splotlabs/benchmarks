@@ -18,6 +18,8 @@ from .util import EXIT_PREREQUISITE, BenchError, canonical_json, sha256_bytes, s
 
 DEFAULT_MANIFEST = HARNESS_ROOT / "corpus" / "ewouth-av2.toml"
 DEFAULT_SUITES = HARNESS_ROOT / "corpus" / "suites.toml"
+CHUNK = 1 << 20
+TIMEOUT_S = 60  # socket timeout of each connection
 REFERENCE_CONVENTION = "avmdec-rawvideo-sha256"
 CASE_KEYS = (
     "id", "name", "url", "input_sha256", "bytes", "width", "height", "bit_depth", "chroma", "frames",
@@ -141,8 +143,9 @@ def _download(case: dict, destination: Path, synthetic: bool) -> None:
         try:
             digest, size = hashlib.sha256(), 0
             try:
-                with os.fdopen(descriptor, "wb") as out, urllib.request.urlopen(url, timeout=60) as response:
-                    while chunk := response.read(1 << 20):
+                with os.fdopen(descriptor, "wb") as out, urllib.request.urlopen(url, timeout=TIMEOUT_S) as response:
+                    # Read at most expected + 1 bytes: a longer stream is wrong, and the disk must not fill.
+                    while size <= case["bytes"] and (chunk := response.read(min(CHUNK, case["bytes"] - size + 1))):
                         digest.update(chunk)
                         size += len(chunk)
                         out.write(chunk)
@@ -151,6 +154,11 @@ def _download(case: dict, destination: Path, synthetic: bool) -> None:
             except (OSError, http.client.HTTPException) as error:
                 errors.append(f"{url}: {getattr(error, 'strerror', None) or error}")
                 continue
+            if size > case["bytes"]:
+                raise BenchError(
+                    f"case {case['id']}: {url} sends more than the expected {case['bytes']} bytes. "
+                    "The transfer was stopped and the download deleted. Do not use this source."
+                )
             actual = "sha256:" + digest.hexdigest()
             if size != case["bytes"] or actual != case["input_sha256"]:
                 raise BenchError(
