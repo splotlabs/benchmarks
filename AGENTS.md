@@ -9,8 +9,11 @@ These rules are canonical. `CLAUDE.md` points to this file.
   `splotbench/`, data schemas, corpus and campaign manifests, and documentation.
 - Do not add a scheduler, a runner service, a self-hosted agent, a database,
   a backend or an encoder runner.
-- CI checks the software with synthetic fixtures only. Do not add scheduled
-  benchmarks, remote runners or automatic publication.
+- CI on push and pull request checks the software with synthetic fixtures only.
+  One manually started workflow (`recipe-smoke.yml`) builds the pinned decoders
+  and runs the correctness pass and a minimal runner smoke on hosted runners. It
+  uploads nothing but the lock, and its data is never published. Do not add
+  schedules, automatic measurement, remote runners or automatic publication.
 - Register and document a command only when it is implemented. Do not add stubs
   or empty placeholder modules.
 
