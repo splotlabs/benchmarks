@@ -6,10 +6,10 @@ from __future__ import annotations
 import argparse
 import sys
 
-from . import __version__, assemble, provenance, publish, validate
+from . import __version__, assemble, corpus, plan, provenance, publish, validate
 from .util import BenchError
 
-COMMAND_MODULES = (provenance, validate, assemble, publish)
+COMMAND_MODULES = (provenance, validate, assemble, plan, corpus, publish)
 
 EXIT_CODES = """exit codes:
   0    success
