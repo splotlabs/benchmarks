@@ -11,6 +11,7 @@ import tarfile
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from helpers import ROOT, bench
 from splotbench import bundle
@@ -100,6 +101,11 @@ class BundleWriterTest(unittest.TestCase):
         with self.assertRaises(BenchError):
             bundle.write_bundle(self.run_dir, self.temporary / "x.tar.gz")
         self.assertFalse((self.temporary / "x.tar.gz").exists())
+
+    def test_path_too_long_for_ustar_is_a_bench_error(self):
+        with self.assertRaises(BenchError) as caught:
+            bundle.archive_bytes({"logs/" + "n" * 300: b"synthetic\n"})
+        self.assertIn("Use a shorter path", str(caught.exception))
 
     def test_writer_refuses_an_invalid_member(self):
         (self.run_dir / "host.json").write_text('{"schema": "splotbench.host/1"}')
@@ -191,6 +197,69 @@ class BundleReaderTest(unittest.TestCase):
         members["SHA256SUMS"] = bundle.checksums({k: v for k, v in members.items() if k != "SHA256SUMS"})
         self.assertEqual(self.problems(self.valid_entries(members)), ["missing run.json"])
 
+    def test_pax_and_gnu_headers_are_rejected(self):
+        pax = tarfile.TarInfo("logs/pax.log")
+        pax.pax_headers = {"comment": "synthetic " * 1000}
+        data = io.BytesIO()
+        with tarfile.open(fileobj=data, mode="w:gz", format=tarfile.PAX_FORMAT) as tar:
+            for info, content in self.valid_entries():
+                info.size = len(content)
+                tar.addfile(info, io.BytesIO(content))
+            pax.size = 0
+            tar.addfile(pax, io.BytesIO(b""))
+        path = self.temporary / "pax.tar.gz"
+        path.write_bytes(data.getvalue())
+        problems = bundle.check_bundle(path)
+        self.assertIn("type b'x'", problems[0])
+        long_name = regular("logs/" + "n" * 120 + ".log", b"synthetic\n")
+        problems = self.problems(self.valid_entries() + [long_name])
+        self.assertIn("type b'L'", problems[0])
+
+    def test_limit_counts_refused_entries_before_reading_them(self):
+        big = tarfile.TarInfo("logs/" + "n" * 120)  # a GNU long-name header with a large name block
+        big.name = "logs/" + "n" * 200_000
+        data = raw_archive(self.valid_entries() + [(big, b"")])
+        path = self.temporary / "big.tar.gz"
+        path.write_bytes(data)
+        with mock.patch.object(bundle, "MAX_BYTES", 100_000):
+            problems = bundle.check_bundle(path)
+        self.assertEqual(problems[-1], "the content is larger than 100000 bytes")
+
+    def test_compressed_size_limit(self):
+        path = self.temporary / "valid.tar.gz"
+        with mock.patch.object(bundle, "MAX_ARCHIVE_BYTES", 100):
+            self.assertEqual(bundle.check_bundle(path), ["the archive is larger than 100 bytes"])
+
+    def test_checksums_cannot_list_themselves(self):
+        members = dict(self.members)
+        members["SHA256SUMS"] += f"{'0' * 64}  SHA256SUMS\n".encode()
+        problems = self.problems(self.valid_entries(members))
+        self.assertEqual(len(problems), 1)
+        self.assertIn("SHA256SUMS cannot list itself", problems[0])
+
+    def resummed(self, members):
+        members["SHA256SUMS"] = bundle.checksums({k: v for k, v in members.items() if k != "SHA256SUMS"})
+        return self.valid_entries(members)
+
+    def test_known_members_must_have_their_kind(self):
+        members = dict(self.members)
+        members["run.json"] = members["host.json"]
+        members["builds.json"] = json.dumps(json.loads(members["builds.json"])[0]).encode()
+        problems = self.problems(self.resummed(members))
+        self.assertEqual(
+            problems,
+            [
+                "builds.json: expected a JSON array, found a JSON object",
+                'run.json: $.schema: expected splotbench.run/1, found "splotbench.host/1"',
+            ],
+        )
+
+    def test_logs_are_free_form_and_other_members_are_refused(self):
+        members = dict(self.members, **{"logs/notes.json": b'{"synthetic": true}', "extra.json": b"{}"})
+        problems = self.problems(self.resummed(members))
+        self.assertEqual(len(problems), 1)
+        self.assertIn("extra.json: unexpected member", problems[0])
+
     def test_not_a_bundle(self):
         path = self.temporary / "broken.tar.gz"
         path.write_bytes(b"synthetic, not gzip")
@@ -263,6 +332,27 @@ class DatasetAndCliTest(unittest.TestCase):
         self.assertEqual(done.returncode, 1)
         self.assertIn("summary.json: dataset_id 'ds-0000000000000000' differs from manifest.json", done.stderr)
         self.assertIn("summary.json: sha256 or size differs from manifest.json files", done.stderr)
+
+    def test_dataset_manifest_that_is_an_array(self):
+        (self.dataset / "manifest.json").write_text("[]")
+        files = {p.relative_to(self.dataset).as_posix(): p.read_bytes() for p in self.dataset.rglob("*")
+                 if p.is_file() and p.name != "SHA256SUMS"}
+        (self.dataset / "SHA256SUMS").write_bytes(bundle.checksums(files))
+        done = bench(ROOT, "validate", str(self.dataset))
+        self.assertEqual(done.returncode, 1)
+        self.assertEqual(done.stderr.strip().splitlines()[-1].split(": ", 2)[-1],
+                         "manifest.json: expected a JSON object, found a JSON array")
+        self.assertNotIn("Traceback", done.stderr)
+
+    def test_lone_surrogate_in_a_file(self):
+        lock = json.loads((FIXTURES / "lock.json").read_text())
+        lock["lock"]["harness"]["version"] = "SURROGATE"
+        path = self.temporary / "synthetic-lock.json"
+        path.write_text(json.dumps(lock).replace("SURROGATE", "\\ud800"))
+        done = bench(ROOT, "validate", str(path))
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("lone surrogate", done.stderr)
+        self.assertNotIn("Traceback", done.stderr)
 
     def test_unknown_input_and_missing_file(self):
         done = bench(ROOT, "validate", str(self.temporary / "synthetic.txt"), str(self.temporary / "absent.json"))

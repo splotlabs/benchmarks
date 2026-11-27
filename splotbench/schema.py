@@ -76,15 +76,20 @@ def _unique_keys(pairs: list[tuple[str, object]]) -> dict:
 
 
 def loads(text: str | bytes) -> object:
-    """Parse JSON. NaN, Infinity, out-of-range numbers and duplicate keys raise ValueError."""
+    """Parse JSON. NaN, Infinity, out-of-range numbers, duplicate keys and lone surrogates raise ValueError."""
     if isinstance(text, bytes):
         text = text.decode("utf-8")
     try:
-        return json.loads(
+        value = json.loads(
             text, parse_constant=_reject_constant, parse_float=_finite_float, object_pairs_hook=_unique_keys
         )
+        # A lone surrogate such as "\ud800" is not Unicode text; it cannot be encoded as UTF-8.
+        json.dumps(value, ensure_ascii=False).encode("utf-8")
     except RecursionError:
         raise ValueError("the document is nested too deeply") from None
+    except UnicodeEncodeError:
+        raise ValueError("a string contains a lone surrogate (an invalid \\u escape)") from None
+    return value
 
 
 # --- schema registry ----------------------------------------------------------
@@ -148,7 +153,7 @@ def registry() -> dict[str, dict]:
 
 
 def known_ids() -> list[str]:
-    return sorted(schema_id for schema_id in registry() if SCHEMA_ID.match(schema_id))
+    return sorted(schema_id for schema_id in registry() if SCHEMA_ID.fullmatch(schema_id))
 
 
 # --- validation ---------------------------------------------------------------
@@ -177,7 +182,7 @@ class _Validator:
         if "enum" in schema and not any(_same(value, option) for option in schema["enum"]):
             options = ", ".join(json.dumps(option) for option in schema["enum"])
             self.errors.append(f"{path}: {json.dumps(value)} is not one of {options}")
-        if isinstance(value, str) and "pattern" in schema and not re.search(schema["pattern"], value):
+        if isinstance(value, str) and "pattern" in schema and not re.fullmatch(schema["pattern"], value):
             self.errors.append(f"{path}: {json.dumps(value)} does not match {schema['pattern']}")
         if JSON_TYPES["number"](value):
             if "minimum" in schema and value < schema["minimum"]:
@@ -249,9 +254,9 @@ def schema_id_problem(document: object) -> str | None:
     schema_id = document.get("schema")
     if not isinstance(schema_id, str):
         return "$: missing the 'schema' field (for example \"splotbench.lock/1\")"
-    match = SCHEMA_ID.match(schema_id)
+    match = SCHEMA_ID.fullmatch(schema_id)
     known = known_ids()
-    kinds = {SCHEMA_ID.match(known_id).group(1): known_id for known_id in known}
+    kinds = {SCHEMA_ID.fullmatch(known_id).group(1): known_id for known_id in known}
     if match is None or match.group(1) not in kinds:
         return f"$.schema: unknown schema kind {schema_id!r}; this harness reads {', '.join(known)}"
     if schema_id not in registry():
@@ -265,32 +270,37 @@ def schema_id_problem(document: object) -> str | None:
 # --- rules that a schema cannot state ------------------------------------------
 
 
-def _provenance_problems(path: str, entry: dict) -> list[str]:
+def _release_problems(path: str, entry: dict) -> list[str]:
+    """One rule for lock implementations, build sources and summary implementations."""
     problems = []
-    if entry["build_origin"] == "upstream-release-asset":
-        problems.append(f"{path}.build_origin: 'upstream-release-asset' is not supported. Build from source.")
     if (entry["identity"] == "release") != (entry["release"] is not None):
         problems.append(f"{path}.identity: 'release' needs a release object, and a release object needs 'release'")
+    if entry.get("build_origin") == "source-release" and entry["release"] is None:
+        problems.append(f"{path}.build_origin: 'source-release' needs a release object")
     return problems
 
 
 def _lock_rules(document: dict) -> list[str]:
+    problems = []
+    for index, entry in enumerate(document["lock"]["implementations"]):
+        problems += _release_problems(f"$.lock.implementations[{index}]", entry)
     digest = sha256_bytes(canonical_json(document["lock"]))
     if document["lock_digest"] != digest:
-        return [f"$.lock_digest: {document['lock_digest']} does not match the lock content ({digest})"]
-    return []
+        problems.append(f"$.lock_digest: {document['lock_digest']} does not match the lock content ({digest})")
+    return problems
 
 
 def _build_rules(document: dict) -> list[str]:
     from .provenance import build_id, build_origin, clean_at
 
     source = document["source"]
-    problems = _provenance_problems("$.source", source)
+    problems = _release_problems("$.source", source)
     expected = build_id(document)
     if document["build_id"] != expected:
         problems.append(f"$.build_id: {document['build_id']} does not match the build content ({expected})")
     if document["class"] == "verified" and not clean_at(source["snapshot"], source["commit"]):
         problems.append("$.class: 'verified' needs a clean Git snapshot at source.commit")
+    # upstream-release-asset is reserved but valid data; the build path refuses to produce it.
     origin = build_origin(source["release"], source["snapshot"], source["commit"])
     if source["build_origin"] != "upstream-release-asset" and source["build_origin"] != origin:
         problems.append(f"$.source.build_origin: expected {origin!r} for this release and snapshot")
@@ -307,7 +317,7 @@ def _host_rules(document: dict) -> list[str]:
 def _summary_rules(document: dict) -> list[str]:
     problems = []
     for index, entry in enumerate(document["implementations"]):
-        problems += _provenance_problems(f"$.implementations[{index}]", entry)
+        problems += _release_problems(f"$.implementations[{index}]", entry)
     known = {
         "machine_id": {machine["machine_id"] for machine in document["machines"]},
         "implementation": {entry["id"] for entry in document["implementations"]},

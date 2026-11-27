@@ -229,6 +229,29 @@ class ResolveTest(unittest.TestCase):
         self.assertEqual(self.resolve("refs/heads/v1.0.0")["commit"], self.later_commit)
         self.assertEqual(self.resolve("refs/tags/v1.0.0")["commit"], self.release_commit)
 
+    def test_commit_must_exist_upstream(self):
+        git(self.upstream, "config", "uploadpack.allowAnySHA1InWant", "true")
+        first = git(self.upstream, "rev-list", "--max-parents=0", "HEAD")
+        git(self.upstream, "tag", "-d", "v1.0.0", "v1.0.1", "build-7")
+        self.assertEqual(resolve(self.url, self.release_commit, None, None)["commit"], self.release_commit)
+        self.assertEqual(first, self.release_commit)
+        with self.assertRaises(BenchError) as caught:
+            self.resolve("0123456789abcdef0123456789abcdef01234567")
+        self.assertEqual(caught.exception.exit_code, 1)
+        self.assertIn("does not serve 0123456789abcdef0123456789abcdef01234567", str(caught.exception))
+
+    def test_tag_that_points_to_a_tree_is_refused(self):
+        git(self.upstream, "tag", "synthetic-tree", "HEAD^{tree}")
+        with self.assertRaises(BenchError) as caught:
+            self.resolve("synthetic-tree")
+        self.assertEqual(caught.exception.exit_code, 1)
+        self.assertIn("resolves to a tree", str(caught.exception))
+
+    def test_commit_with_a_trailing_newline_is_not_a_commit(self):
+        with self.assertRaises(BenchError) as caught:
+            self.resolve(self.later_commit + "\n")
+        self.assertIn("is not a full commit, tag or branch", str(caught.exception))
+
     def test_unreachable_upstream_is_a_missing_prerequisite(self):
         with self.assertRaises(BenchError) as caught:
             resolve((self.root / "synthetic-absent").as_uri(), "main", None, None)

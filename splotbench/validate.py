@@ -14,9 +14,9 @@ from . import bundle, schema
 from .util import EXIT_FAILURE
 
 DATASET_DOCUMENTS = {
-    "manifest.json": "splotbench.dataset/1",
-    "summary.json": "splotbench.summary/1",
-    "lock.json": "splotbench.lock/1",
+    "manifest.json": ("object", "splotbench.dataset/1"),
+    "summary.json": ("object", "splotbench.summary/1"),
+    "lock.json": ("object", "splotbench.lock/1"),
 }
 
 
@@ -53,16 +53,14 @@ def dataset_problems(directory: Path) -> list[str]:
     problems += [f"{path}: listed in {bundle.CHECKSUMS} but missing" for path in sorted(sums.keys() - files.keys())]
 
     documents = {}
-    for name, schema_id in DATASET_DOCUMENTS.items():
+    for name, expected in DATASET_DOCUMENTS.items():
         if name not in files:
             problems.append(f"missing {name}")
             continue
-        found = bundle.document_problems(name, files[name])
+        found = bundle.document_problems(name, files[name], expected)
         problems += [f"{name}: {problem}" for problem in found]
         if not found:
             documents[name] = schema.loads(files[name])
-            if documents[name]["schema"] != schema_id:
-                problems.append(f"{name}: expected schema {schema_id}, found {documents[name]['schema']}")
     if problems:
         return problems
 

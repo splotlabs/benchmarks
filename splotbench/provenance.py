@@ -8,6 +8,7 @@ import json
 import os
 import re
 import stat
+import tempfile
 from pathlib import Path
 
 from . import __version__
@@ -170,6 +171,26 @@ def _remote_refs(repository: str) -> tuple[dict[str, str], dict[str, str]]:
     return branches, {**direct, **peeled}
 
 
+def _verify_commit(repository: str, select: str, object_id: str) -> None:
+    """Fetch the resolved object into a temporary bare repository and check that it is a commit."""
+    no_prompt = {"GIT_TERMINAL_PROMPT": "0"}
+    with tempfile.TemporaryDirectory(prefix="splotbench-resolve-") as temporary:
+        _git(Path(temporary), "init", "-q", "--bare")
+        fetch = ["git", "-C", temporary, "fetch", "-q", "--depth", "1"]
+        done = run([*fetch, "--filter=tree:0", repository, object_id], extra_env=no_prompt)
+        if done.returncode != 0:  # the server may refuse filters; a plain shallow fetch still proves the object
+            done = run([*fetch, repository, object_id], extra_env=no_prompt)
+        if done.returncode != 0:
+            detail = done.stderr.decode("utf-8", "replace").strip()
+            raise BenchError(
+                f"select {select!r}: {repository} does not serve {object_id}: {detail}. "
+                "Use a commit, tag or branch that exists upstream."
+            )
+        kind = _git(Path(temporary), "cat-file", "-t", object_id).decode().strip()
+    if kind != "commit":
+        raise BenchError(f"select {select!r} resolves to a {kind} ({object_id}), not a commit. Select a commit.")
+
+
 def resolve(
     repository: str, select: str, release_tag_pattern: str | None, release_url_template: str | None
 ) -> dict:
@@ -185,7 +206,7 @@ def resolve(
     """
     branches, tags = _remote_refs(repository)
     selected_tag = None
-    if FULL_COMMIT.match(select):
+    if FULL_COMMIT.fullmatch(select):
         commit = select
     else:
         found = []
@@ -205,6 +226,7 @@ def resolve(
                 f"Use refs/tags/{select} or refs/heads/{select}."
             )
         commit = found[0]
+    _verify_commit(repository, select, commit)
 
     release = None
     if release_tag_pattern:

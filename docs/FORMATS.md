@@ -79,8 +79,10 @@ Release rules:
    moves upstream later does not change a lock.
 
 `build_origin` is `source-release` only for clean source at a verified release
-commit, else `source-development`. `upstream-release-asset` is reserved and
-refused. A local build is never an upstream binary.
+commit, else `source-development`. `source-release` needs a release object.
+`upstream-release-asset` is a valid, reserved value: the formats accept it, and
+this harness has no path that produces it. A local build is never an upstream
+binary.
 
 Traceability is not determinism. The records identify the exact source, build
 inputs and the executable that ran. They do not promise that a compiler gives
@@ -133,7 +135,7 @@ Each id resolves inside the same summary, without a moving branch:
   harness commit and snapshot.
 
 The validator implements this keyword subset: `type`, `const`, `enum`,
-`pattern`, `minimum`, `maximum`, `items`, `minItems`, `properties`,
+`pattern` (the whole string must match), `minimum`, `maximum`, `items`, `minItems`, `properties`,
 `required`, `additionalProperties`, `propertyNames`, `anyOf`, `$ref` and the
 splotbench keyword `discriminator` (`{"property": "kind", "mapping": {...}}`).
 A schema with any other keyword fails to load.

@@ -154,6 +154,12 @@ class StrictJsonTest(unittest.TestCase):
         except ValueError:
             pass
 
+    def test_lone_surrogate_is_rejected_at_load(self):
+        for text in ('{"a": "\\ud800"}', '{"\\udfff": 1}', '["ok", ["\\ud800x"]]'):
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                schema.loads(text)
+        self.assertEqual(schema.loads('"\\ud83d\\ude00"'), "\U0001f600")
+
     def test_duplicate_keys_are_rejected(self):
         with self.assertRaises(ValueError):
             schema.loads('{"a": 1, "a": 2}')
@@ -186,10 +192,38 @@ class RuleTest(unittest.TestCase):
             schema.validate(build), ["$.source.build_origin: expected 'source-development' for this release and snapshot"]
         )
 
-    def test_upstream_release_asset_is_not_supported(self):
+    def test_upstream_release_asset_is_valid_reserved_data(self):
         build = load("build-fixture-a-x86-64.json")
         build["source"]["build_origin"] = "upstream-release-asset"
-        self.assertIn("'upstream-release-asset' is not supported", schema.validate(build)[0])
+        self.assertEqual(schema.validate(build), [])
+        summary = load("dataset/summary.json")
+        summary["implementations"][0]["build_origin"] = "upstream-release-asset"
+        self.assertEqual(schema.validate(summary), [])
+
+    def test_source_release_needs_a_release_in_every_format(self):
+        summary = load("dataset/summary.json")
+        summary["implementations"][1]["build_origin"] = "source-release"
+        self.assertEqual(
+            schema.validate(summary), ["$.implementations[1].build_origin: 'source-release' needs a release object"]
+        )
+        build = load("run/builds.json")[1]
+        build["source"]["build_origin"] = "source-release"
+        self.assertIn("$.source.build_origin: 'source-release' needs a release object", schema.validate(build))
+
+    def test_lock_identity_needs_release_object(self):
+        lock = load("lock.json")
+        lock["lock"]["implementations"][0]["release"] = None
+        lock["lock_digest"] = sha256_bytes(canonical_json(lock["lock"]))
+        self.assertEqual(
+            schema.validate(lock),
+            ["$.lock.implementations[0].identity: 'release' needs a release object, and a release object needs 'release'"],
+        )
+
+    def test_pattern_must_match_the_whole_string(self):
+        build = load("build-fixture-a-x86-64.json")
+        build["source"]["commit"] += "\n"
+        self.assertIn("does not match", schema.validate(build)[0])
+        self.assertIn("unknown schema kind", schema.validate({"schema": "splotbench.lock/1\n"})[0])
 
     def test_release_identity_needs_release_object(self):
         summary = load("dataset/summary.json")
