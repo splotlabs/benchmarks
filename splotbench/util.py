@@ -84,6 +84,22 @@ def write_atomic(path: Path, data: bytes) -> None:
         os.close(directory)
 
 
+def json_bytes(document: object) -> bytes:
+    """The written form of a JSON document: indented, UTF-8, one final newline."""
+    return (json.dumps(document, indent=2, ensure_ascii=False) + "\n").encode()
+
+
+def process_alive(pid: int, *, group: bool = False) -> bool:
+    """True while the process (or a member of the process group) exists, an unreaped zombie included."""
+    try:
+        (os.killpg if group else os.kill)(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        pass
+    return True
+
+
 def recorded_env(environ: Mapping[str, str] = os.environ) -> dict[str, str]:
     """Return the allow-listed subset of `environ`. Records never hold the whole environment."""
     return {name: environ[name] for name in ENV_ALLOWLIST if name in environ}

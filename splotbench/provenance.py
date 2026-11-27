@@ -12,7 +12,7 @@ import tempfile
 from pathlib import Path
 
 from . import __version__
-from .util import EXIT_PREREQUISITE, BenchError, canonical_json, run, sha256_bytes, sha256_file
+from .util import EXIT_FAILURE, EXIT_PREREQUISITE, BenchError, canonical_json, run, sha256_bytes, sha256_file
 
 HARNESS_ROOT = Path(__file__).resolve().parent.parent
 HARNESS_REPOSITORY = "https://github.com/splotlabs/benchmarks"
@@ -20,11 +20,13 @@ GITLINK_MODE = "160000"
 FULL_COMMIT = re.compile(r"^[0-9a-f]{40}$")
 
 
-def _git(directory: Path, *args: str) -> bytes:
-    done = run(["git", "-C", str(directory), *args])
+def _git(directory: Path, *args: str, exit_code: int = EXIT_FAILURE) -> bytes:
+    done = run(["git", "-C", str(directory), "-c", "core.quotePath=false", *args])
     if done.returncode != 0:
         detail = done.stderr.decode("utf-8", "replace").strip()
-        raise BenchError(f"`git {' '.join(args)}` failed in {directory}: {detail}. Make sure it is a readable Git checkout.")
+        raise BenchError(
+            f"`git {' '.join(args)}` failed in {directory}: {detail}. Make sure it is a readable Git checkout.", exit_code
+        )
     return done.stdout
 
 

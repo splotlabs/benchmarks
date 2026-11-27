@@ -12,21 +12,16 @@ import contextlib
 import fcntl
 import filecmp
 import hashlib
-import json
 import os
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
 from . import assemble, bundle, schema, validate
-from .util import BenchError, write_atomic
+from .util import BenchError, json_bytes, write_atomic
 
 MAX_FILE_BYTES = validate.MAX_PUBLISHED_FILE_BYTES
 DEFAULT_TARGET = Path(__file__).resolve().parent.parent / "published"
-
-
-def index_bytes(document: dict) -> bytes:
-    return (json.dumps(document, indent=2, ensure_ascii=False) + "\n").encode()
 
 
 def index_change(index: dict | None, entry: dict, promote: bool) -> tuple[dict | None, str]:
@@ -177,7 +172,7 @@ def publish(directory: Path, target: Path, *, dry_run: bool = False, promote: bo
         if new is not None:
             with _io("write", target / "index.json",
                      f"The dataset directory {final} is complete but not listed; run the same command again."):
-                write_atomic(target / "index.json", index_bytes(new))
+                write_atomic(target / "index.json", json_bytes(new))
         out(f"{target / 'index.json'}: {line}" + ("" if new is not None else " (not written)"))
     finally:
         os.close(descriptor)

@@ -54,33 +54,58 @@ class FingerprintTest(unittest.TestCase):
 
 
 class HostLockTest(unittest.TestCase):
-    def setUp(self):
-        temporary = tempfile.TemporaryDirectory()
-        self.addCleanup(temporary.cleanup)
-        self.work = Path(temporary.name) / "work"
+    def fresh_lock_directory(self) -> None:
+        patcher = mock.patch.object(host, "LOCK_DIRECTORY", tempfile.mkdtemp())
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def test_free_lock_creates_nothing(self):
-        self.assertIsNone(host.lock_holder(self.work))
-        self.assertFalse(self.work.exists())
+        self.fresh_lock_directory()
+        self.assertIsNone(host.lock_holder())
+        self.assertFalse(host.lock_path().exists())
+
+    def test_one_lock_file_for_the_host_with_mode_0600(self):
+        self.assertEqual(host.lock_path(), Path(tempfile.gettempdir()) / f"splotbench-host-{os.getuid()}.lock")
+        with host.HostLock() as held:
+            self.assertEqual(held.path, host.lock_path())
+            self.assertEqual(os.stat(held.path).st_mode & 0o777, 0o600)
+            self.assertEqual(held.path.read_text(), f"{os.getpid()}\n")
+
+    def test_a_link_or_a_directory_is_refused(self):
+        self.fresh_lock_directory()
+        target = Path(tempfile.mkdtemp()) / "synthetic-target"
+        target.write_text("")
+        for kind, make in (("link", lambda path: path.symlink_to(target)), ("directory", lambda path: path.mkdir())):
+            path = host.lock_path()
+            make(path)
+            try:
+                with self.subTest(kind=kind):
+                    with self.assertRaisesRegex(BenchError, "host lock .* Remove it"):
+                        host.HostLock().__enter__()
+                    with self.assertRaisesRegex(BenchError, "host lock .* Remove it"):
+                        host.lock_holder()
+            finally:
+                path.unlink() if path.is_symlink() else path.rmdir()
+        self.assertEqual(target.read_text(), "")
 
     def test_second_holder_is_refused_with_the_pid(self):
-        with host.HostLock(self.work):
-            self.assertEqual(host.lock_holder(self.work), str(os.getpid()))
+        with host.HostLock():
+            self.assertEqual(host.lock_holder(), str(os.getpid()))
             with self.assertRaisesRegex(BenchError, f"process {os.getpid()}"):
-                host.HostLock(self.work).__enter__()
-        self.assertIsNone(host.lock_holder(self.work))
+                host.HostLock().__enter__()
+        self.assertIsNone(host.lock_holder())
 
     def test_the_kernel_releases_the_lock_of_a_killed_process(self):
-        code = "import sys, time; from splotbench import host\nwith host.HostLock(sys.argv[1]):\n print('held', flush=True); time.sleep(60)"
-        child = subprocess.Popen([sys.executable, "-c", code, str(self.work)], cwd=ROOT, stdout=subprocess.PIPE, text=True)
+        code = "import time; from splotbench import host\nwith host.HostLock():\n print('held', flush=True); time.sleep(60)"
+        child = subprocess.Popen([sys.executable, "-c", code], cwd=ROOT, stdout=subprocess.PIPE, text=True)
         self.addCleanup(child.stdout.close)
         self.addCleanup(child.wait)
         self.addCleanup(child.kill)
         self.assertEqual(child.stdout.readline(), "held\n")
-        self.assertEqual(host.lock_holder(self.work), str(child.pid))
+        self.assertEqual(host.lock_holder(), str(child.pid))
         child.kill()
         child.wait()
-        with host.HostLock(self.work):
+        with host.HostLock():
             pass
 
 

@@ -683,7 +683,9 @@ class OfficialTest(Base):
         self.assertRejected(arm, x86, text=f"run {ARM_RUN} has class development, not verified", official=True)
 
     def test_official_refuses_synthetic_lock(self):
-        self.assertRejected(self.arm(), self.x86(), text="the lock is synthetic", official=True)
+        message = self.assertRejected(self.arm(), self.x86(), text="the lock is synthetic", official=True)
+        # The assembling harness is clean (HARNESS is verified); a synthetic lock is the only reason.
+        self.assertNotIn("clean Git checkout", message)
 
 
 class CliTest(Base):

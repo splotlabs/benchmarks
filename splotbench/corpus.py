@@ -257,7 +257,7 @@ def _prepare(args: argparse.Namespace) -> int:
 
     lock = plan.load_lock(args.lock)
     plan.check_role(lock, args.role)
-    with host.HostLock(args.work):  # no download or build while `bench run` measures
+    with host.HostLock():  # no download or build while `bench run` measures
         paths = ensure(lock, args.work, offline=args.offline)
         print(f"corpus: {len(paths)} streams verified in {Path(args.work) / 'corpus'}")
         for manifest in build.ensure(lock, args.role, args.work, args.jobs, offline=args.offline):

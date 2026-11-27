@@ -18,7 +18,7 @@ from unittest import mock
 
 from helpers import ROOT, git, isolate_git, restore_git
 from splotbench import assemble, cli, publish, schema, validate
-from splotbench.util import BenchError
+from splotbench.util import BenchError, json_bytes
 from test_assemble import ARM, HARNESS, X86, X86_RUN, Base, lock_with
 
 OTHER_HARNESS = {**HARNESS, "snapshot_sha256": "sha256:" + "b2" * 32}  # another harness gives another dataset id
@@ -205,7 +205,7 @@ class PublishTest(PublishBase):
         shutil.rmtree(self.target / "datasets" / source.name)
         document = self.index()
         document["datasets"][0]["name"] = "changed"
-        (self.target / "index.json").write_bytes(publish.index_bytes(document))
+        (self.target / "index.json").write_bytes(json_bytes(document))
         before = self.files()
         with self.assertRaises(BenchError) as raised:
             self.publish(source)
@@ -322,24 +322,24 @@ class PublishedDirectoryTest(PublishBase):
         summary = json.loads((source / "summary.json").read_text())
         document = {"schema": "splotbench.index/1", "latest_complete": None,
                     "datasets": [{**assemble.index_entry(summary), "published_utc": "2026-01-01T00:00:00Z"}]}  # fmt: skip
-        (self.target / "index.json").write_bytes(publish.index_bytes(document))
+        (self.target / "index.json").write_bytes(json_bytes(document))
         self.assertEqual(self.problems(), [f"datasets/{source.name}: synthetic test data is never published"])
 
     def test_bad_latest_complete(self):
         source = self.published()
         document = self.index()
         document["latest_complete"] = "ds-0123456789abcdef"
-        (self.target / "index.json").write_bytes(publish.index_bytes(document))
+        (self.target / "index.json").write_bytes(json_bytes(document))
         self.assertTrue(any("latest_complete" in p for p in self.problems()))
         document["latest_complete"] = source.name  # listed and complete and official: valid
-        (self.target / "index.json").write_bytes(publish.index_bytes(document))
+        (self.target / "index.json").write_bytes(json_bytes(document))
         self.assertEqual(self.problems(), [])
 
     def test_entry_that_disagrees_with_its_summary(self):
         source = self.published()
         document = self.index()
         document["datasets"][0]["name"] = "changed"
-        (self.target / "index.json").write_bytes(publish.index_bytes(document))
+        (self.target / "index.json").write_bytes(json_bytes(document))
         self.assertEqual(self.problems(), [f"index.json: the entry of {source.name} differs from its summary.json"])
 
     def test_manifest_id_that_differs_from_the_directory_name(self):
@@ -348,7 +348,7 @@ class PublishedDirectoryTest(PublishBase):
         (self.target / "datasets" / source.name).rename(self.target / "datasets" / other)
         document = self.index()
         document["datasets"][0].update(dataset_id=other, path=f"datasets/{other}/")
-        (self.target / "index.json").write_bytes(publish.index_bytes(document))
+        (self.target / "index.json").write_bytes(json_bytes(document))
         self.assertIn(f"datasets/{other}: the manifest has dataset_id {source.name}", self.problems())
 
     def test_symbolic_links_and_a_datasets_file_are_rejected(self):
@@ -489,7 +489,7 @@ class ImmutableTest(unittest.TestCase):
         self.assertEqual(raised.exception.exit_code, 3)
         index = {"schema": "splotbench.index/1", "latest_complete": None, "datasets": []}
         shutil.rmtree(self.published / "datasets")
-        (self.published / "index.json").write_bytes(publish.index_bytes(index))
+        (self.published / "index.json").write_bytes(json_bytes(index))
         self.commit()
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):

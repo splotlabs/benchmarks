@@ -243,7 +243,10 @@ Do not copy `<work>`: the streams and builds are rebuilt on the other host.
 - **Host lock held after a crash.** If the harness process ended without cleanup,
   `bench run`, `bench verify` or `bench doctor` says that the lock is held and that a
   decoder process still runs. Find it with the `ps -A -o pid,pgid,command` command that
-  the message gives. Stop that process group, then resume the run.
+  the message gives. Stop that process group, then resume the run. The lock is one
+  file for the whole host, `<tmp>/splotbench-host-<uid>.lock` in the system temporary
+  directory: a `bench run`, `prepare` or `verify` in another work directory also holds
+  it. `bench doctor` prints its path and whether it is free.
 - **Failed build.** Read `<work>/build/<id>/<commit>/build.log`. Install the missing
   tool, then run `bench prepare` again. Do not patch the source and do not change the
   lock. If the recipe itself fails, stop and report the log. On a platform other than

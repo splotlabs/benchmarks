@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from . import build, bundle, corpus, host, plan, provenance, schema, verify
-from .util import BenchError, write_atomic
+from .util import BenchError, json_bytes, process_alive, write_atomic
 
 GRACE_S = 2
 POLL_S = 0.01
@@ -74,7 +74,7 @@ def _rows(path: Path) -> list[dict]:
 
 
 def _write_json(path: Path, document: object) -> None:
-    write_atomic(path, (json.dumps(document, indent=2, ensure_ascii=False) + "\n").encode())
+    write_atomic(path, json_bytes(document))
 
 
 # --- order: seeded-rotation/1 ---------------------------------------------------
@@ -215,10 +215,10 @@ def _check_cpus(ctx: _Context) -> tuple[str, str]:
 
 
 def _check_host_lock(ctx: _Context) -> tuple[str, str]:
-    holder = host.lock_holder(ctx.work)
+    holder = host.lock_holder()
     if holder:
-        raise BenchError(host.held_message(ctx.work / host.LOCK_NAME, holder))
-    return "ok", "free"
+        raise BenchError(host.held_message(host.lock_path(), holder))
+    return "ok", f"{host.lock_path()} is free"
 
 
 CHECKS = (
@@ -340,24 +340,14 @@ class _Stop:
             raise Interrupted
 
 
-def _group_alive(pgid: int) -> bool:
-    try:
-        os.killpg(pgid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        pass
-    return True
-
-
 def _kill_group(pgid: int) -> None:
     """Kill the members left in the group of a reaped leader, then wait until none is left."""
     # shortcut: a member counts until it is reaped, so a zombie under a non-reaping PID 1 (some containers)
     # stops the run here; scan /proc for zombies if such hosts must be supported.
-    if _group_alive(pgid):
+    if process_alive(pgid, group=True):
         verify._signal_group(pgid, signal.SIGKILL)
     deadline = time.monotonic() + GRACE_S
-    while _group_alive(pgid):
+    while process_alive(pgid, group=True):
         if time.monotonic() > deadline:
             raise BenchError(f"process group {pgid} still has members after SIGKILL. Stop them, then resume the run.")
         time.sleep(POLL_S)
@@ -667,7 +657,7 @@ def execute(lock_path: Path, role: str, work: Path, machine_id: str, resume: str
     if resume is not None and not _is_run_id(resume):
         raise BenchError(f"--resume {resume!r} is not a run id like arm64-20260101T000000Z-0123abcd.", 2)
     ctx, stop = _Context(lock, role, work, machine_id), _Stop()
-    with host.HostLock(work) as held:
+    with host.HostLock() as held:
         ctx.pass_fds = (held.descriptor,)  # each decoder keeps the host lock while it lives
         previous = {number: signal.signal(number, stop) for number in stop.SIGNALS}
         run_dir = run_doc = None

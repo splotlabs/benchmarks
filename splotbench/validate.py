@@ -10,8 +10,8 @@ import stat
 import sys
 from pathlib import Path
 
-from . import bundle, plan, schema
-from .util import EXIT_FAILURE, EXIT_PREREQUISITE, BenchError, run
+from . import bundle, plan, provenance, schema
+from .util import EXIT_FAILURE, EXIT_PREREQUISITE, BenchError
 
 MAX_PUBLISHED_FILE_BYTES = 50 * 1024 * 1024  # a file in Git; the hosting limit is 100 MB
 DATASET_DOCUMENTS = {
@@ -43,15 +43,7 @@ def dataset_problems(directory: Path) -> list[str]:
     if bundle.CHECKSUMS not in files:
         return problems + [f"missing {bundle.CHECKSUMS}"]
     sums, sum_problems = bundle.parse_checksums(files[bundle.CHECKSUMS])
-    problems += sum_problems
-    for path, data in sorted(files.items()):
-        if path == bundle.CHECKSUMS:
-            continue
-        if path not in sums:
-            problems.append(f"{path}: not listed in {bundle.CHECKSUMS}")
-        elif hashlib.sha256(data).hexdigest() != sums[path]:
-            problems.append(f"{path}: sha256 does not match {bundle.CHECKSUMS}")
-    problems += [f"{path}: listed in {bundle.CHECKSUMS} but missing" for path in sorted(sums.keys() - files.keys())]
+    problems += sum_problems + bundle.checksum_problems(files, sums, "missing")
 
     documents = {}
     for name, expected in DATASET_DOCUMENTS.items():
@@ -150,11 +142,7 @@ def is_published_directory(path: Path) -> bool:
 
 
 def _git(directory: Path, *args: str) -> bytes:
-    done = run(["git", "-c", "core.quotePath=false", *args], cwd=directory)
-    if done.returncode:
-        raise BenchError(f"git {args[0]} failed in {directory}: {done.stderr.decode(errors='replace').strip()}",
-                         EXIT_PREREQUISITE)  # fmt: skip
-    return done.stdout
+    return provenance._git(directory, *args, exit_code=EXIT_PREREQUISITE)
 
 
 def immutable_problems(directory: Path, ref: str) -> list[str]:

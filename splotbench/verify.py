@@ -269,7 +269,7 @@ def run(
 
 
 def _verify(args: argparse.Namespace) -> int:
-    with host.HostLock(args.work) as held:  # one harness run at a time; decoders keep the lock
+    with host.HostLock() as held:  # one harness run at a time; decoders keep the lock
         rows = run(
             plan.load_lock(args.lock), args.role, args.work, case=args.case, implementation=args.implementation,
             threads=args.threads, pass_fds=(held.descriptor,),
