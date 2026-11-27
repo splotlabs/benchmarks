@@ -44,6 +44,24 @@ def full_cells(lock_doc: dict, role: str, overrides: dict | None = None, default
     return cells
 
 
+def _build_from_lock(entry: dict, template: list) -> dict:
+    """A build manifest whose source is exactly the lock entry (commit, identity, release)."""
+    build = copy.deepcopy(next((b for b in template if b["source"]["identity"] == entry["identity"]), template[0]))
+    build["source"].update(
+        repository=entry["repository"], commit=entry["commit"], identity=entry["identity"], release=entry["release"],
+        build_origin="source-release" if entry["release"] else "source-development",
+    )  # fmt: skip
+    build["source"]["snapshot"].update(
+        commit=entry["commit"], tree=entry["commit"],
+        snapshot_sha256=sha256_bytes(f"snapshot {entry['id']} {entry['commit']}".encode()),
+    )  # fmt: skip
+    build.update(
+        implementation=entry["id"], binary_path=f"build/{entry['id']}/{entry['commit']}/{entry['id']}",
+        version_output=f"{entry['id']} synthetic",
+    )  # fmt: skip
+    return build
+
+
 def write_run(
     work: Path,
     lock_doc: dict,
@@ -60,10 +78,15 @@ def write_run(
     edit=None,
     without=(),
     snapshot_sha256=None,
+    warmup=True,
+    builds_from_lock=False,
 ) -> tuple[Path, str]:
     """Write a run directory under `work`, pack it as `<run_id>.tar.gz` and return (archive, digest).
 
     `without` lists implementations that have no build in this run (their cells need no rows).
+    `warmup=False` writes no warm-up attempt (the lock must say warmups 0).
+    `builds_from_lock` makes every build from the lock entry; implementations that are not in the
+    fixture lock always are.
     `snapshot_sha256` replaces the source snapshot digest of every build.
     `edit`, when given, changes the documents before they are written.
     `cells` maps (implementation, case, threads) to one of:
@@ -83,7 +106,8 @@ def write_run(
     for implementation in lock["implementations"]:
         if implementation["id"] in without:
             continue
-        build = copy.deepcopy(next(b for b in template if b["implementation"] == implementation["id"]))
+        known = next((b for b in template if b["implementation"] == implementation["id"]), None)
+        build = copy.deepcopy(known) if known and not builds_from_lock else _build_from_lock(implementation, template)
         build["class"] = run_class
         if snapshot_sha256:
             build["source"]["snapshot"]["snapshot_sha256"] = snapshot_sha256
@@ -97,7 +121,7 @@ def write_run(
     host["fingerprint_digest"] = sha256_bytes(canonical_json(host["fingerprint"]))
 
     attempts, correctness, sequence = [], [], 0
-    started_minute = 0
+    started_minute = int(started[11:13]) * 60 + int(started[14:16])
 
     def attempt(implementation, case, threads, phase, round_number, wall, cpu, outcome):
         nonlocal sequence, started_minute
@@ -114,7 +138,7 @@ def write_run(
             "threads": threads,
             "phase": phase,
             "round": round_number,
-            "started_utc": f"2026-01-01T{started_minute // 60:02d}:{started_minute % 60:02d}:00Z",
+            "started_utc": f"{started[:10]}T{started_minute // 60:02d}:{started_minute % 60:02d}:00Z",
             "outcome": outcome,
             "exit_code": 0 if outcome == "ok" else None,
             "workload": {
@@ -149,7 +173,8 @@ def write_run(
         })
         if isinstance(value, str):
             continue
-        attempt(implementation, case, threads, "warmup", 1, 999_000_000_000, 1, "ok")
+        if warmup:
+            attempt(implementation, case, threads, "warmup", 1, 999_000_000_000, 1, "ok")
         for round_number, item in enumerate(value, 1):
             if isinstance(item, str):
                 attempt(implementation, case, threads, "measure", round_number, None, None, item)
