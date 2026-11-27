@@ -39,7 +39,7 @@ Digest strings are `sha256:<64 hex>`.
 | `splotbench.lock/1` | `LOCK.json`, `lock.json` | Every execution-relevant value, resolved once: `harness` snapshot, `implementations` (commit, identity, release), `corpus`, `suite.cases` with reference digests, `roles`, `measurement`. |
 | `splotbench.build/1` | `W/build/<id>/<commit>/build.json`, `builds.json` (an array) | One build: `build_id`, `class`, `source` (repository, commit, identity, release, `build_origin`, snapshot, lock files), `binary_path`, `binary_sha256`, `libraries`, `version_output`, `target`, `toolchain`, `configuration`, `environment` (allow-listed variables only). |
 | `splotbench.host/1` | `host.json` | `machine_id`, `fingerprint`, `fingerprint_digest`. |
-| `splotbench.correctness/1` | `correctness.jsonl` | One untimed check per build, case and thread budget: `outcome`, output and reference byte counts and digests. |
+| `splotbench.correctness/1` | `W/verify/<build_id>.jsonl`, `correctness.jsonl` | One untimed check per build, case and thread budget: `outcome`, output and reference byte counts and digests. |
 | `splotbench.attempt/1` | `attempts.jsonl` | One raw timed process run: ids, `phase`, `round`, `outcome`, and the decode payload with `frames` and typed `metrics`. |
 | `splotbench.run/1` | `run.json` | One host run and the manifest of its bundle: `run_id`, `campaign_id`, `lock_digest`, `role`, `machine_id`, `state`, `class`, `harness`, `fingerprint_digest`, `build_ids`. |
 | `splotbench.dataset/1` | `manifest.json` | One assembled dataset: ids, `origin`, `complete`, `runs` with bundle digests, `coverage`, `files`. |

@@ -31,7 +31,11 @@ Run the commands from the repository root.
 ./bench --version         # harness version and commit
 ./bench identity          # harness identity as JSON: commit, tree, dirty flag, content digest
 ./bench validate PATH...  # check JSON and JSONL files, bundles and dataset directories
+./bench verify --lock L --role R --work W   # untimed correctness pass of the prepared builds
 ```
+
+The builds, the decoder adapters and the correctness pass are described in
+[docs/METHODOLOGY.md](docs/METHODOLOGY.md).
 
 The data formats and identities are described in [docs/FORMATS.md](docs/FORMATS.md).
 
@@ -53,8 +57,9 @@ with Python 3.11 and 3.14.
 | --- | --- |
 | `bench` | Entry script. |
 | `splotbench/` | The harness package. `cli.py` registers one parser per command module. `schema.py` validates, `provenance.py` records source, release and binary identity, `bundle.py` writes and reads bundles. |
+| `splotbench/build.py`, `splotbench/adapters/`, `splotbench/verify.py` | Pinned decoder builds, one adapter per decoder (`splot`, `dav2d`, `avm`, `fixture`), the correctness pass (`bench verify`). |
 | `schemas/` | JSON Schema files: the source of truth for every data format. |
-| `docs/` | Format documentation. |
+| `docs/` | Format documentation (`FORMATS.md`) and the methodology (`METHODOLOGY.md`). |
 | `tests/` | Unit tests and synthetic fixtures (`tests/fixtures/`). |
 | `.github/workflows/` | CI: unit tests only. No benchmark runs, schedules or publication. |
 

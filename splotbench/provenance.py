@@ -309,7 +309,7 @@ def check_binary(work: Path, manifest: dict) -> None:
         raise BenchError(
             f"the binary of build {manifest['build_id']} changed since its manifest: recorded "
             f"{recorded['binary_sha256']}, found {current['binary_sha256']} for {manifest['binary_path']} "
-            "(or a library differs). Run `bench prepare` again to rebuild."
+            "(or a library differs). Remove its build directory and run `bench prepare` again to rebuild."
         )
 
 
