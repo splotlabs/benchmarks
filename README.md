@@ -104,7 +104,7 @@ with Python 3.11 and 3.14.
 | `schemas/` | JSON Schema files: the source of truth for every data format. |
 | `docs/` | Format documentation, the methodology (`METHODOLOGY.md`), the publishing procedure, the runbooks, the reproduction guide and the encoder design note. `tests/test_docs.py` keeps the commands in them true. |
 | `tests/` | Unit tests and synthetic fixtures (`tests/fixtures/`). |
-| `.github/workflows/` | CI: unit tests and the checks of committed published data. No benchmark runs, schedules or publication. |
+| `.github/workflows/` | CI: unit tests and the checks of committed published data. `recipe-smoke.yml`, started by hand only: decoder builds, the correctness pass and a runner smoke on hosted Linux runners; its timing data is discarded. No schedules, benchmark results or publication. |
 
 Downloaded corpora, builds, raw runs, bundles and generated datasets do not go
 into Git. `.gitignore` excludes them.

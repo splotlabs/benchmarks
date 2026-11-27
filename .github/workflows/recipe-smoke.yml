@@ -1,0 +1,152 @@
+# Manual recipe and correctness smoke on GitHub-hosted Linux runners.
+#
+# It makes one lock, then on an x86-64 and an arm64 runner builds the pinned decoders
+# by the recipes, runs the correctness pass and a minimal runner smoke with that same lock.
+# Hosted runners are virtual machines: the timing data of this workflow is discarded
+# and is never a benchmark result. It uploads nothing but the lock. Start it by hand only.
+
+name: Recipe smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  lock:
+    name: lock
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Make the smoke plan from the template
+        run: |
+          python - "$RUNNER_TEMP/recipe-smoke.toml" <<'EOF'
+          import re, sys, tomllib
+          text = open("campaigns/template.toml").read()
+          for pattern, value in (
+              (r'^name = .*$', 'name = "recipe-smoke"'),
+              (r'^suite = .*$', 'suite = "quick"'),
+              (r'^warmups = \d+', 'warmups = 0'),
+              (r'^repetitions = \d+', 'repetitions = 1'),
+              (r'^threads = \[.*\]$', 'threads = [1, 4]'),
+          ):
+              text, count = re.subn(pattern, value, text, flags=re.M)
+              assert count, pattern
+          plan = tomllib.loads(text)
+          assert (plan["name"], plan["suite"], plan["warmups"], plan["repetitions"]) == ("recipe-smoke", "quick", 0, 1)
+          assert {name: role["threads"] for name, role in plan["roles"].items()} == {"arm64": [1, 4], "x86-64": [1, 4]}
+          open(sys.argv[1], "w").write(text)
+          EOF
+      - name: Lock
+        run: ./bench lock "$RUNNER_TEMP/recipe-smoke.toml" -o "$RUNNER_TEMP/recipe-smoke-lock.json"
+      - name: Validate the lock
+        run: ./bench validate "$RUNNER_TEMP/recipe-smoke-lock.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: recipe-smoke-lock
+          path: ${{ runner.temp }}/recipe-smoke-lock.json
+          retention-days: 3
+          if-no-files-found: error
+
+  role:
+    name: role ${{ matrix.role }}
+    needs: lock
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            role: x86-64
+            machine: ci-x86-64
+          - os: ubuntu-24.04-arm
+            role: arm64
+            machine: ci-arm64
+    env:
+      ROLE: ${{ matrix.role }}
+      MACHINE: ${{ matrix.machine }}
+    steps:
+      - name: Set the paths
+        run: |
+          {
+            echo "LOCK=$RUNNER_TEMP/lock/recipe-smoke-lock.json"
+            echo "WORK=$RUNNER_TEMP/work"
+            echo "OUT=$RUNNER_TEMP/out"
+          } >> "$GITHUB_ENV"
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - uses: actions/download-artifact@v4
+        with:
+          name: recipe-smoke-lock
+          path: ${{ runner.temp }}/lock
+      - name: Install the build tools that the runner image lacks
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q meson ninja-build nasm
+          for tool in cmake perl rustup; do
+            command -v "$tool" || sudo apt-get install -y -q "$tool"
+          done
+          for tool in git cc meson ninja cmake perl nasm rustup cargo; do
+            printf '%s: ' "$tool"; command -v "$tool" || echo missing
+          done
+      - name: Install the Rust toolchain that the locked Splot commit pins
+        run: |
+          commit=$(python -c 'import json, sys; lock = json.load(open(sys.argv[1]))["lock"]; print(next(i["commit"] for i in lock["implementations"] if i["adapter"] == "splot"))' "$LOCK")
+          curl -fsSL "https://raw.githubusercontent.com/splotlabs/splot/$commit/rust-toolchain.toml" -o "$RUNNER_TEMP/rust-toolchain.toml"
+          read -r channel profile components < <(python -c 'import sys, tomllib; t = tomllib.load(open(sys.argv[1], "rb"))["toolchain"]; print(t["channel"], t.get("profile", "default"), ",".join(t.get("components", [])) or "-")' "$RUNNER_TEMP/rust-toolchain.toml")
+          args=(--profile "$profile")
+          [ "$components" != "-" ] && args+=(--component "$components")
+          rustup toolchain install "$channel" "${args[@]}"
+      - name: Validate the lock
+        run: ./bench validate "$LOCK" | tee "$RUNNER_TEMP/validate-lock.txt"
+      - name: Prepare (corpus and builds)
+        run: ./bench prepare --lock "$LOCK" --role "$ROLE" --work "$WORK" --jobs "$(nproc)"
+      - name: Verify
+        run: ./bench verify --lock "$LOCK" --role "$ROLE" --work "$WORK" | tee "$RUNNER_TEMP/verify.txt"
+      - name: Doctor
+        run: ./bench doctor --lock "$LOCK" --role "$ROLE" --work "$WORK" --machine-id "$MACHINE" | tee "$RUNNER_TEMP/doctor.txt"
+      - name: Run
+        run: ./bench run --lock "$LOCK" --role "$ROLE" --work "$WORK" --machine-id "$MACHINE" | tee "$RUNNER_TEMP/run.txt"
+      - name: Bundle and validate it
+        run: |
+          run_id=$(sed -n 's/^run \([^ ]*\): .*/\1/p' "$RUNNER_TEMP/run.txt" | tail -n 1)
+          test -n "$run_id"
+          ./bench bundle --work "$WORK" --run "$run_id" -o "$RUNNER_TEMP/$run_id.tar.gz"
+          ./bench validate "$RUNNER_TEMP/$run_id.tar.gz"
+          echo "BUNDLE=$RUNNER_TEMP/$run_id.tar.gz" >> "$GITHUB_ENV"
+      - name: Assemble a local dataset and validate it
+        run: |
+          ./bench assemble --lock "$LOCK" "$BUNDLE" -o "$OUT" | tee "$RUNNER_TEMP/assemble.txt"
+          for dataset in "$OUT"/datasets/*/; do ./bench validate "$dataset"; done
+      - name: Summary (identities and outcomes only, no timing)
+        if: always()
+        run: |
+          {
+            echo "## Recipe smoke: role $ROLE on $RUNNER_OS $RUNNER_ARCH (machine id $MACHINE)"
+            echo
+            echo "Hosted runners are virtual machines; timing data is discarded and is not a benchmark result."
+            echo
+            echo '```'
+            grep -h '^valid: ' "$RUNNER_TEMP/validate-lock.txt" 2>/dev/null || true
+            grep -h '^  build ' "$RUNNER_TEMP/doctor.txt" 2>/dev/null || true
+            grep -h '^checks: ' "$RUNNER_TEMP/verify.txt" 2>/dev/null || true
+            grep -h '^run [^ ]*: ' "$RUNNER_TEMP/run.txt" 2>/dev/null || true
+            cat "$RUNNER_TEMP/assemble.txt" 2>/dev/null || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
