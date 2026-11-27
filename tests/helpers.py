@@ -3,14 +3,22 @@
 
 from __future__ import annotations
 
+import atexit
 import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
+
+# Each test process, and each `bench` child it starts, gets its own temporary and runtime directory.
+# So the host lock of the tests never meets a real run or a parallel CI job on the same runner.
+TEMPORARY = tempfile.mkdtemp(prefix="splotbench-tests-")
+os.environ["TMPDIR"] = os.environ["XDG_RUNTIME_DIR"] = tempfile.tempdir = TEMPORARY
+atexit.register(shutil.rmtree, TEMPORARY, True)
 
 # Keep the developer's global and system Git configuration out of the tests.
 _isolated_git = mock.patch.dict(os.environ, {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"})

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
-"""Host inspection: native architecture, observed fingerprint, machine id and the host lock `W/host.lock`.
+"""Host inspection: native architecture, observed fingerprint, machine id and the host lock.
 
 Nothing here changes a system setting. A fact that the OS does not give without
 privilege is null. The fingerprint holds no host name, user name or path.
@@ -12,17 +12,18 @@ import os
 import platform
 import re
 import shutil
+import stat
 import struct
 import subprocess
 import sys
 import sysconfig
 from pathlib import Path
 
-from .util import BenchError, canonical_json, sha256_bytes
+from .util import BenchError, canonical_json, process_alive, sha256_bytes
 
 ARCH = {"arm64": "aarch64", "aarch64": "aarch64", "amd64": "x86_64", "x86_64": "x86_64"}
 MACHINE_ID = re.compile(r"^[a-z0-9][a-z0-9-]{1,40}$")
-LOCK_NAME = "host.lock"
+LOCK_DIRECTORY = None  # None: see lock_directory(); tests point it elsewhere
 COMMAND_TIMEOUT_S = 10
 
 
@@ -203,21 +204,48 @@ def host_document(machine_id: str, facts: dict) -> dict:
 # --- host lock ------------------------------------------------------------------
 
 
-def _alive(pid: str) -> bool:
-    if not pid.isdigit():
-        return False
-    try:
-        os.kill(int(pid), 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        pass
-    return True
+def _own_directory(path: str | None) -> bool:
+    return bool(path) and os.path.isdir(path) and not os.path.islink(path) and os.stat(path).st_uid == os.getuid()
+
+
+def lock_directory() -> Path:
+    """A directory that only this user can write, the same for every work directory.
+
+    `$XDG_RUNTIME_DIR/splotbench` when that is an existing directory of this user, else
+    `$XDG_CACHE_HOME/splotbench`, else `~/.cache/splotbench`. A shared temporary directory
+    would let another user squat the lock file.
+    """
+    if LOCK_DIRECTORY:
+        return Path(LOCK_DIRECTORY)
+    runtime, cache = os.environ.get("XDG_RUNTIME_DIR"), os.environ.get("XDG_CACHE_HOME")
+    base = Path(runtime) if _own_directory(runtime) else Path(cache) if cache else Path.home() / ".cache"
+    return base / "splotbench"
+
+
+def lock_path() -> Path:
+    """The one host lock of this user."""
+    return lock_directory() / "host.lock"
+
+
+def _check_directory(directory: Path, create: bool) -> None:
+    """Create the lock directory with mode 0700; refuse a link or anything but a directory of this user."""
+    if create:
+        directory.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            os.mkdir(directory, 0o700)
+        except FileExistsError:
+            pass
+    status = os.lstat(directory)
+    if stat.S_ISLNK(status.st_mode) or not stat.S_ISDIR(status.st_mode) or status.st_uid != os.getuid():
+        raise BenchError(
+            f"the host lock directory {directory} is a symbolic link or not a directory of this user. "
+            "Remove it, then run again."
+        )
 
 
 def held_message(path: Path, holder: str) -> str:
     """Name the holder of the host lock: the harness, or a decoder that a harness left running."""
-    if _alive(holder):
+    if holder.isdigit() and process_alive(int(holder)):
         return f"another harness invocation holds {path} (process {holder}). Wait until it ends, then run the command again."
     return (
         f"{path} is held, but harness process {holder} has ended: a decoder process that it started still runs and "
@@ -225,18 +253,33 @@ def held_message(path: Path, holder: str) -> str:
     )
 
 
+def _open_lock(path: Path, flags: int) -> int:
+    """Open the lock file without following a link; refuse anything but a regular file of this user."""
+    _check_directory(path.parent, create=bool(flags & os.O_CREAT))
+    try:
+        descriptor = os.open(path, flags | os.O_NOFOLLOW, 0o600)
+    except FileNotFoundError:
+        raise
+    except OSError as error:  # ELOOP: a symbolic link
+        raise BenchError(f"cannot open the host lock {path}: {error.strerror}. Remove it, then run again.") from None
+    status = os.fstat(descriptor)
+    if not stat.S_ISREG(status.st_mode) or status.st_uid != os.getuid():
+        os.close(descriptor)
+        raise BenchError(f"the host lock {path} is not a regular file of this user. Remove it, then run again.")
+    return descriptor
+
+
 class HostLock:
-    """`W/host.lock`: one harness run at a time. The kernel releases the lock when the last process
+    """One harness run at a time on this host. The kernel releases the lock when the last process
     that has it open ends; `bench run` and `bench verify` pass it to each decoder, so an orphaned
     decoder keeps it."""
 
-    def __init__(self, work: Path) -> None:
-        self.path = Path(work) / LOCK_NAME
+    def __init__(self) -> None:
+        self.path = lock_path()
         self.descriptor = None
 
     def __enter__(self) -> "HostLock":
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        descriptor = os.open(self.path, os.O_RDWR | os.O_CREAT, 0o644)
+        descriptor = _open_lock(self.path, os.O_RDWR | os.O_CREAT)
         try:
             fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
@@ -252,11 +295,10 @@ class HostLock:
         os.close(self.descriptor)
 
 
-def lock_holder(work: Path) -> str | None:
-    """Return the process that holds `W/host.lock`, or None when it is free. Creates nothing."""
-    path = Path(work) / LOCK_NAME
+def lock_holder() -> str | None:
+    """Return the process that holds the host lock, or None when it is free. Creates nothing."""
     try:
-        descriptor = os.open(path, os.O_RDONLY)
+        descriptor = _open_lock(lock_path(), os.O_RDONLY)
     except FileNotFoundError:
         return None
     try:

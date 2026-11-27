@@ -324,13 +324,13 @@ class RunTest(unittest.TestCase):
         (run_id,) = os.listdir(self.work / "runs")
         run_dir = self.work / "runs" / run_id
         # The orphaned decoder holds the host lock: no second harness starts while it runs.
-        self.assertEqual(host.lock_holder(self.work), str(process.pid))
+        self.assertEqual(host.lock_holder(), str(process.pid))
         done = bench(ROOT, "run", *self.common(lock), "--machine-id", MACHINE, "--resume", run_id)
         self.assertEqual(done.returncode, 1)
         self.assertIn(f"harness process {process.pid} has ended: a decoder process that it started still runs", done.stderr)
         os.killpg(leader, signal.SIGKILL)
         self.assertTrue(wait_gone(leader) and wait_gone(descendant))
-        self.assertIsNone(host.lock_holder(self.work))
+        self.assertIsNone(host.lock_holder())
 
         (lost_log,) = run_dir.glob("logs/3-*.log")
         lost_bytes = lost_log.read_bytes()
@@ -383,13 +383,15 @@ class RunTest(unittest.TestCase):
 
     def test_second_invocation_is_refused_while_the_lock_is_held(self):
         lock = self.prepare([fb.case(self.work, "fixture-ok", "ok")], self.impls[:1], threads=(1,))
-        with host.HostLock(self.work):
-            done = bench(ROOT, "run", *self.common(lock), "--machine-id", MACHINE)
+        other = self.root / "other-work"  # the lock is per host, not per work directory
+        with host.HostLock():
+            done = bench(ROOT, "run", "--lock", str(lock), "--role", self.role, "--work", str(other), "--machine-id", MACHINE)
             doctor = bench(ROOT, "doctor", *self.common(lock))
         self.assertEqual(done.returncode, 1)
-        self.assertIn(f"holds {self.work / 'host.lock'} (process {os.getpid()})", done.stderr)
-        self.assertIn(f"fail host lock: another harness invocation holds {self.work / 'host.lock'} (process {os.getpid()})", doctor.stdout)
-        self.assertFalse((self.work / "runs").exists())
+        self.assertIn(f"holds {host.lock_path()} (process {os.getpid()})", done.stderr)
+        self.assertIn(f"fail host lock: another harness invocation holds {host.lock_path()} (process {os.getpid()})", doctor.stdout)
+        self.assertFalse(other.exists())
+        self.assertIn(f"ok   host lock: {host.lock_path()} is free", bench(ROOT, "doctor", *self.common(lock)).stdout)
 
     def test_missing_input_needs_prepare(self):
         lock = self.prepare([fb.case(self.work, "fixture-ok", "ok")], self.impls[:1], threads=(1,))

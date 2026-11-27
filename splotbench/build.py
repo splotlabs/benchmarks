@@ -8,7 +8,6 @@ and writes `build.json` (schema `splotbench.build/1`) and `build.log` there.
 
 from __future__ import annotations
 
-import json
 import os
 import platform
 import shlex
@@ -18,7 +17,7 @@ import tomllib
 from pathlib import Path
 
 from . import adapters, bundle, provenance, schema
-from .util import EXIT_PREREQUISITE, BenchError, run, sha256_file, write_atomic
+from .util import EXIT_PREREQUISITE, BenchError, json_bytes, run, sha256_file, write_atomic
 
 # Flag variables would change the compiler settings behind the recipe; the policy takes flags from the recipe only.
 POLICY_ENV = (
@@ -195,7 +194,7 @@ def _write_manifest(path: Path, manifest: dict) -> None:
     problems = schema.validate(manifest)
     if problems:
         raise BenchError(f"internal error: the {manifest['implementation']} build manifest is invalid: {problems[0]}")
-    write_atomic(path, (json.dumps(manifest, indent=2, ensure_ascii=False) + "\n").encode())
+    write_atomic(path, json_bytes(manifest))
 
 
 def _probe(argv: list[str], cwd: Path, env: dict[str, str]) -> str:

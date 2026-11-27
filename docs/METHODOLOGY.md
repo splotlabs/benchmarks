@@ -283,7 +283,7 @@ which it holds) and stops at the first failure.
 | correctness | | a cell has no correctness row for the current builds and this lock's reference, or a row is not `ok` |
 | disk | less than 1 GiB is free in `W` | |
 | cpus | | the logical CPUs are fewer than the largest thread budget |
-| host lock | another process holds `W/host.lock` | |
+| host lock | another process holds the host lock (the line names its path and state) | |
 
 ## Host settings: recorded, never changed
 
@@ -302,8 +302,16 @@ A fact that the OS does not give without privilege is `null`. The fingerprint
 holds no host name, user name or path. Its digest is part of the run identity: a
 change of power source or governor makes a new fingerprint, so a run cannot resume.
 
-`W/host.lock` allows one harness invocation at a time: `bench run`, `bench prepare`
-and `bench verify` take it. It is an OS file lock (`flock`). `bench run` and
+The host lock allows one harness invocation at a time on this host, for every
+work directory of the user: `bench run`, `bench prepare` and `bench verify` take it.
+It is one file, `splotbench/host.lock`, in a directory that only the user can write:
+`$XDG_RUNTIME_DIR` when it is an existing directory of the user, else
+`$XDG_CACHE_HOME`, else `~/.cache`. A shared temporary directory is not used, because
+another user could take the file there. The `splotbench` directory is created with
+mode 0700 and refused when it is a symbolic link or not a directory of the user.
+The file holds only the pid of the harness; it is opened without following a
+symbolic link, created with mode 0600 and refused when it is not a regular file of
+the user. It is an OS file lock (`flock`). `bench run` and
 `bench verify` pass its descriptor to every decoder, so the kernel releases it only
 when the harness and every decoder that holds it have ended. A second invocation
 exits 1 and names the holder: the harness process, or, when that process has

@@ -116,23 +116,30 @@ def document_problems(name: str, data: bytes, expected: tuple[str, str] | None =
     return problems
 
 
-def member_problems(members: dict[str, bytes]) -> list[str]:
-    """Check the content rules of a bundle: checksums, the known members and their schemas."""
-    if CHECKSUMS not in members:
-        return [f"missing {CHECKSUMS}"]
-    sums, problems = parse_checksums(members[CHECKSUMS])
-    for path, data in sorted(members.items()):
+def checksum_problems(files: dict[str, bytes], sums: dict[str, str], absent: str) -> list[str]:
+    """Compare files with parsed `SHA256SUMS`: unlisted files, digest mismatches, listed files that are `absent`."""
+    problems = []
+    for path, data in sorted(files.items()):
         if path == CHECKSUMS:
             continue
         if path not in sums:
             problems.append(f"{path}: not listed in {CHECKSUMS}")
         elif hashlib.sha256(data).hexdigest() != sums[path]:
             problems.append(f"{path}: sha256 does not match {CHECKSUMS}")
+    return problems + [f"{path}: listed in {CHECKSUMS} but {absent}" for path in sorted(sums.keys() - files.keys())]
+
+
+def member_problems(members: dict[str, bytes]) -> list[str]:
+    """Check the content rules of a bundle: checksums, the known members and their schemas."""
+    if CHECKSUMS not in members:
+        return [f"missing {CHECKSUMS}"]
+    sums, problems = parse_checksums(members[CHECKSUMS])
+    problems += checksum_problems(members, sums, "not in the bundle")
+    for path, data in sorted(members.items()):
         if path in MEMBERS:
             problems += [f"{path}: {problem}" for problem in document_problems(path, data, MEMBERS[path])]
-        elif not path.startswith(FREE_FORM):
+        elif path != CHECKSUMS and not path.startswith(FREE_FORM):
             problems.append(f"{path}: unexpected member; a bundle holds {', '.join(MEMBERS)} and {FREE_FORM}")
-    problems += [f"{path}: listed in {CHECKSUMS} but not in the bundle" for path in sorted(sums.keys() - members.keys())]
     problems += [f"missing {path}" for path in MEMBERS if path not in members]
     return problems
 

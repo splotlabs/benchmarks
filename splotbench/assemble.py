@@ -11,7 +11,6 @@ import argparse
 import csv
 import io
 import itertools
-import json
 import math
 import os
 import shutil
@@ -20,7 +19,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import bundle, plan, provenance, schema, verify
-from .util import BenchError, canonical_json, sha256_bytes
+from .util import BenchError, canonical_json, json_bytes, sha256_bytes
 
 AGGREGATION = "summary/1"
 CELL_FIELDS = (
@@ -311,10 +310,6 @@ def _csv(cells: list[dict]) -> bytes:
     return out.getvalue().encode()
 
 
-def _json(document: dict) -> bytes:
-    return (json.dumps(document, indent=2, ensure_ascii=False) + "\n").encode()
-
-
 def _series_id(lock: dict, run: dict, host: dict) -> str:
     basis = {
         "corpus": lock["corpus"]["digest"], "methodology": lock["methodology"], "build_policy": lock["build_policy"],
@@ -335,7 +330,7 @@ def running_harness() -> dict:
 
 def _official_problems(lock: dict, selected: list[Imported], cells: list[dict], missing: list[str], harness: dict) -> list[str]:
     problems = ["the lock is synthetic; synthetic data is never official"] if lock["origin"] == "synthetic" else []
-    if harness["class"] != "verified":
+    if harness["class"] != "verified" and lock["origin"] != "synthetic":  # a synthetic lock has its own reason
         problems.append(
             f"the assembling harness has class {harness['class']}, not verified. "
             "Run assemble from a clean Git checkout at a commit."
@@ -519,7 +514,7 @@ def assemble(
     }  # fmt: skip
 
     files = {
-        "summary.json": _json(summary),
+        "summary.json": json_bytes(summary),
         "summary.csv": _csv(cells),
         "lock.json": lock_bytes,
         **{f"bundles/{i.run['run_id']}.tar.gz": i.data for i in selected + excluded},
@@ -534,7 +529,7 @@ def assemble(
     }  # fmt: skip
     if excluded:
         manifest["excluded_runs"] = [{**run_entry(i), "reason": "not selected with --select"} for i in excluded]
-    files["manifest.json"] = _json(manifest)
+    files["manifest.json"] = json_bytes(manifest)
     files[bundle.CHECKSUMS] = bundle.checksums({p: d for p, d in files.items() if p != bundle.CHECKSUMS})
     for name, document in (("summary.json", summary), ("manifest.json", manifest)):
         problems = schema.validate(document)
