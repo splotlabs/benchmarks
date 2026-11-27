@@ -24,9 +24,10 @@ Windows is not supported.
 
 ## Use
 
-Run the commands from the repository root.
+Run the commands from the repository root. This synopsis shows every command and
+option. The runbooks below give the commands in order.
 
-```sh
+```text
 ./bench --help            # commands and exit codes
 ./bench --version         # harness version and commit
 ./bench identity          # harness identity as JSON: commit, tree, dirty flag, content digest
@@ -54,6 +55,19 @@ The data formats and identities are described in [docs/FORMATS.md](docs/FORMATS.
 Exit codes: 0 success, 1 the operation ran and the result is a failure,
 2 usage error, 3 missing prerequisite or configuration, 130 interrupted.
 
+## Documentation
+
+| Document | For |
+| --- | --- |
+| [docs/RUNBOOK-FIRST-HOST.md](docs/RUNBOOK-FIRST-HOST.md) | The first machine of a two-machine campaign (normally arm64), with a prompt for an AI agent. |
+| [docs/RUNBOOK-SECOND-HOST.md](docs/RUNBOOK-SECOND-HOST.md) | The second machine (normally x86-64): reuse the first lock, with a prompt for an AI agent. |
+| [docs/RUNBOOK-ASSEMBLE-PUBLISH.md](docs/RUNBOOK-ASSEMBLE-PUBLISH.md) | Collect bundles, assemble, inspect and, on explicit request, publish. |
+| [docs/REPRODUCE.md](docs/REPRODUCE.md) | Run and inspect a benchmark on one machine, without credentials. Results are `local`. |
+| [docs/METHODOLOGY.md](docs/METHODOLOGY.md) | Builds, timing boundary, correctness, repetitions, aggregation and identities. |
+| [docs/FORMATS.md](docs/FORMATS.md) | Data formats, identities and dataset rules. |
+| [docs/PUBLISHING.md](docs/PUBLISHING.md) | How a dataset reaches `published/`. |
+| [docs/ENCODER-EXTENSION.md](docs/ENCODER-EXTENSION.md) | Design note for a future encoder workload. Not implemented. |
+
 ## Tests
 
 ```sh
@@ -74,7 +88,7 @@ with Python 3.11 and 3.14.
 | `splotbench/host.py`, `splotbench/run.py` | Host fingerprint, machine id and host lock; `bench doctor`, `bench run` (correctness pass, timed phase, resume) and `bench bundle`. |
 | `published/` | Published official datasets and `index.json`, added only with `bench publish` through a pull request. Existing dataset directories never change. |
 | `schemas/` | JSON Schema files: the source of truth for every data format. |
-| `docs/` | Format documentation, the methodology (`METHODOLOGY.md`) and the publishing procedure. |
+| `docs/` | Format documentation, the methodology (`METHODOLOGY.md`), the publishing procedure, the runbooks, the reproduction guide and the encoder design note. `tests/test_docs.py` keeps the commands in them true. |
 | `tests/` | Unit tests and synthetic fixtures (`tests/fixtures/`). |
 | `.github/workflows/` | CI: unit tests and the checks of committed published data. No benchmark runs, schedules or publication. |
 
