@@ -224,7 +224,7 @@ def enumerate_cells(lock: dict, role: str | None = None) -> list[Cell]:
     """Return every expected cell of a lock document, from the lock only.
 
     Order: roles in lock order, then cases in suite order, then thread counts in
-    list order, then implementations in lock order. With `role` only that role.
+    ascending order, then implementations in lock order. With `role` only that role.
     Each cell gets `attempt_counts(lock)` attempts.
     """
     body = lock["lock"]
@@ -235,7 +235,7 @@ def enumerate_cells(lock: dict, role: str | None = None) -> list[Cell]:
         for name, spec in body["roles"].items()
         if role in (None, name)
         for case in body["suite"]["cases"]
-        for threads in spec["threads"]
+        for threads in sorted(spec["threads"])
         for implementation in body["implementations"]
     ]
 

@@ -261,6 +261,12 @@ class MatrixTest(TempTest):
         self.assertEqual(cells[1], ("arm64", "synthetic-8bit", 1, "fixture-b"))
         self.assertEqual(cells[-1], ("x86-64", "synthetic-10bit", 4, "fixture-b"))
 
+    def test_thread_counts_come_in_ascending_order(self):
+        lock = copy.deepcopy(self.lock)
+        lock["lock"]["roles"]["x86-64"]["threads"] = [4, 1, 2]
+        threads = [c.threads for c in plan.enumerate_cells(lock, "x86-64") if c.case == "synthetic-8bit" and c.implementation == "fixture-a"]
+        self.assertEqual(threads, [1, 2, 4])
+
     def test_unknown_role(self):
         with self.assertRaises(BenchError):
             plan.enumerate_cells(self.lock, "riscv")

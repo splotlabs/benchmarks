@@ -80,7 +80,7 @@ def dataset_problems(directory: Path) -> list[str]:
         if "sha256:" + hashlib.sha256(data).hexdigest() != listed[path]["sha256"] or len(data) != listed[path]["bytes"]:
             problems.append(f"{path}: sha256 or size differs from manifest.json files")
 
-    for run in manifest["runs"]:
+    for run in manifest["runs"] + manifest.get("excluded_runs", []):
         path = run["bundle"]["path"]
         if listed.get(path) != run["bundle"]:
             problems.append(f"manifest.json: bundle of run {run['run_id']} is not the listed file {path}")
