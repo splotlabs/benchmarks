@@ -94,6 +94,8 @@ def published_problems(directory: Path) -> list[str]:
     """Check a published directory: index.json, its dataset directories and the size limit."""
     from . import assemble  # assemble imports this module
 
+    if directory.is_symlink():
+        return ["the published directory is a symbolic link; it must be a real directory"]
     problems = []
     for path in sorted(directory.rglob("*")):
         if path.is_file() and path.stat().st_size > MAX_PUBLISHED_FILE_BYTES:
@@ -162,8 +164,18 @@ def immutable_problems(directory: Path, ref: str) -> list[str]:
     """
     if ref.startswith("-"):
         raise BenchError(f"{ref!r} is not a Git ref. Give a branch, tag or commit.", 2)
+    if directory.is_symlink():
+        raise BenchError(f"{directory} is a symbolic link. The published directory must be a real directory.")
     top = Path(_git(directory, "rev-parse", "--show-toplevel").decode().strip())
-    prefix = directory.resolve().relative_to(top.resolve()).as_posix() + "/datasets/"
+    inside = _git(directory, "rev-parse", "--show-prefix").decode().strip()  # the physical path below the top
+    parts = [part for part in inside.split("/") if part]
+    # Only links between the repository top and the directory matter; a link above the top is harmless.
+    lexical = Path(os.path.abspath(directory))
+    levels = [lexical, *lexical.parents][: len(parts)]
+    if [level.name for level in reversed(levels)] != parts or any(level.is_symlink() for level in levels):
+        raise BenchError(f"{directory} or a parent inside the repository is a symbolic link. "
+                         "The published directory must be reached without links.")  # fmt: skip
+    prefix = inside + "datasets/"
     existing = {
         name[len(prefix):].split("/")[0]
         for name in _git(top, "ls-tree", "-r", "-z", "--name-only", "--full-name", ref, "--", prefix).decode().split("\0")
