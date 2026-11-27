@@ -57,11 +57,11 @@ Copy the first host's lock file to `<lock>` as an ordinary file. Check it:
 
 ```sh
 ./bench validate <lock>
-grep '"lock_digest"' <lock>
 ```
 
-`bench validate` recomputes the digest from the content. The `grep` shows the digest
-stored in the file. Compare it with the expected digest from the first report. They must
+`bench validate` recomputes the digest from the content and prints
+`valid: <lock> (lock sha256:<hex>, campaign <id>)`. Compare that digest and campaign id
+with the expected values from the first report. They must
 be equal, character by character. If they differ, stop. Ask for the file again. Do not
 edit the lock and do not make another one.
 

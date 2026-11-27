@@ -77,11 +77,15 @@ If the owner gave you a lock, use it. Do not run `bench lock`. Check it:
 ./bench validate <lock>
 ```
 
-`bench validate` checks the schema and recomputes the lock digest. Then go to step 3.
+`bench validate` checks the schema and recomputes the lock digest. It prints
+`valid: <lock> (lock sha256:<hex>, campaign <id>)`. Record that digest and campaign id for
+your report. Then go to step 3.
 
 If the owner gave you a plan, make the lock once. The harness checkout must be clean
-and at a commit that is on `origin/main`, because the second host fetches that commit.
-Check it:
+and at a commit that the harness repository serves, because the second host fetches that
+commit. `bench lock` enforces this for a standard plan: it stops when the checkout is not
+a clean Git commit or when the commit cannot be fetched from the harness repository.
+A short pre-check saves time:
 
 ```sh
 git status --porcelain
@@ -101,12 +105,6 @@ must show `"dirty": false`.
 lock once and refuses to overwrite a file. It prints the campaign id, the digest, the
 suite, the harness commit and, per decoder, the full commit and `release` or
 `development`. Copy that output into your report.
-
-Record the digest. It is the value of `lock_digest` in the lock file:
-
-```sh
-grep '"lock_digest"' <lock>
-```
 
 ### 3. Prepare
 
@@ -141,7 +139,8 @@ decoder that lacks one gets the outcome `unsupported`.
 
 The correctness pass decodes every case with every decoder and thread budget, hashes the
 output and compares it with the reference. It is untimed. It exits 1 when a cell is not
-`ok`. That is a result, not a reason to change anything.
+`ok`. That is a result, not a reason to change anything. The last line is
+`checks: <n> ok, <n> incorrect, <n> unsupported, <n> timeout, <n> error`. Copy it into your report.
 
 ```sh
 ./bench verify --lock <lock> --role <role> --work <work>
@@ -162,6 +161,10 @@ Read every line. A `fail` line stops you. A `warn` line needs a decision:
 - `tools` warns about a missing build tool. It matters only for `bench prepare`.
 - `correctness` warns when cells have no row yet. `bench run` checks them.
 - `cpus` warns when the host has fewer logical CPUs than the largest thread budget.
+
+`bench doctor` prints the `builds` line and then one line per build:
+`build <impl> <commit> <release|development> <build_id> sha256:<hex>`. Copy these lines
+into your report. They give the build ids and the binary digests.
 
 `bench doctor` prints the host fingerprint at the end. Copy the line
 `fingerprint sha256:...` into your report.
@@ -193,14 +196,14 @@ take many hours. Do not start a second harness command in the same `<work>`.
 
 Give the owner this report. Use the values that the commands printed.
 
-1. Lock: path, digest (`lock_digest`), campaign id.
+1. Lock: path, digest and campaign id (from `bench lock` or `bench validate`).
 2. Harness commit, and the output of `bench identity` (`dirty` must be false).
 3. For each decoder: the full commit, `release <version> (<tag>)` or `development`, and
-   the build id and the `binary_sha256` (from `<work>/build/<id>/<commit>/build.json`).
+   the build id and the binary digest (the `build ...` lines of `bench doctor`).
 4. Machine id, role, and the fingerprint digest of `bench doctor`.
 5. Run id and run class (`verified`, `development` or `synthetic`), and the run state.
-6. The count of cells per correctness outcome (`ok`, `incorrect`, `unsupported`,
-   `timeout`, `error`) from the `bench verify` output, and the count of attempts per outcome.
+6. The `checks:` line of `bench verify`, and the final line of `bench run`
+   (`run <id>: <state>, <n> correctness rows, <n> attempt rows`).
 7. The paths of the lock and of the bundle, and the bundle digest.
 8. Every `warn` line, every difference found in step 4, and every failure.
 
@@ -226,6 +229,16 @@ Do not copy `<work>`: the streams and builds are rebuilt on the other host.
   A resume refuses when the lock, harness, builds, binaries, machine id or host
   fingerprint changed (for example another power source). Then start a new run
   without `--resume`. The old run keeps its rows and can still be bundled.
+  Resume never rewrites a row. It may print `attempt <n> has a start record but no row;
+  recorded it as interrupted`: the attempt is recorded and runs again under a new
+  number. It may also print that an incomplete last line was moved to `logs/`: the
+  partial line is kept there and is not a row. If `bench run` exits 130 before a run
+  directory exists, it says so; nothing was started and you run the command again
+  without `--resume`.
+- **Host lock held after a crash.** If the harness process ended without cleanup,
+  `bench run`, `bench verify` or `bench doctor` says that the lock is held and that a
+  decoder process still runs. Find it with the `ps -A -o pid,pgid,command` command that
+  the message gives. Stop that process group, then resume the run.
 - **Failed build.** Read `<work>/build/<id>/<commit>/build.log`. Install the missing
   tool, then run `bench prepare` again. Do not patch the source and do not change the
   lock. If the recipe itself fails, stop and report the log. On a platform other than
@@ -233,7 +246,11 @@ Do not copy `<work>`: the streams and builds are rebuilt on the other host.
 - **Input URL not available.** Do not change the lock or the corpus. `bench prepare`
   names the stream. Try again later. Report the stream and the error. A lock case may
   list `mirrors`; the harness uses them as the lock says.
+- **Reused correctness rows.** A correctness row counts only when its reference values
+  equal the lock case. A row from another lock is not reused; `bench run` checks the cell again.
 - **Decoder gives wrong output.** The `incorrect` result stays in the evidence. The
   cell gets no timed attempt. Do not skip the case. Report it.
+  Each attempt log in `<work>/runs/<run-id>/logs/` starts with `# attempt <row JSON>` and
+  `$ <command>`. A log is capped at 1 MiB (head and tail are kept).
 - **Bundle of an interrupted run.** `bench bundle` accepts it. `run.json` holds the
   state. An assembly with `--official` refuses it.
