@@ -167,7 +167,7 @@ def _fetch(implementation: dict, src: Path) -> None:
 def _clean_snapshot(src: Path, commit: str) -> dict:
     """Snapshot of a clean checkout at `commit`. Files that Git ignores count too: a build could read them."""
     source = provenance.snapshot(src)
-    ignored = run(["git", "-C", str(src), "status", "--porcelain", "--ignored"]).stdout.decode("utf-8", "replace")
+    ignored = run(["git", "-C", str(src), "--no-optional-locks", "status", "--porcelain", "--ignored"]).stdout.decode("utf-8", "replace")
     if not provenance.clean_at(source, commit) or ignored.strip():
         found = "; ".join(ignored.splitlines()[:3])
         raise BenchError(

@@ -3,7 +3,8 @@
 """Synthetic fixture decoder for tests. It plays a decoder and decodes nothing.
 
 Usage: decoder [--threads N] [-o PATH|-|--discard] INPUT. INPUT is JSON:
-{"mode": ..., "fill": byte value, "bytes": output size, "frames": count, "pid_file": path}.
+{"mode": ..., "fill": byte value, "bytes": output size, "frames": count, "pid_file": path,
+"timed": {overrides for the timed run --discard}, "marker": path (apply "timed" once only)}.
 Modes: ok, wrong (other bytes), short (half the bytes), long (one byte more), fail (exit 3),
 unsupported, unsupported-option, hang, spawn-hang (start a descendant, write both pids, hang),
 exit-after-output (correct bytes, exit 1), signal (correct bytes, then SIGKILL itself),
@@ -39,6 +40,11 @@ def main(argv: list[str]) -> int:
             source = word
     with open(source) as file:
         spec = json.load(file)
+    # The timed run (--discard) uses the "timed" overrides; with a "marker" path only once.
+    if sink is None and not os.path.exists(spec.get("marker", "")):
+        if "marker" in spec:
+            open(spec["marker"], "w").close()
+        spec.update(spec.get("timed", {}))
     mode = spec["mode"]
     if mode == "unsupported-option":
         print("decoder: unrecognized option '--threads'", file=sys.stderr)

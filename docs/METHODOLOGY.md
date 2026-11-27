@@ -1,6 +1,6 @@
 # Methodology `decode-cli-wall/1`
 
-This page defines the builds, the decoder adapters and the correctness pass.
+This page defines the builds, the decoder adapters, the correctness pass and the timed runs.
 The data formats are in [FORMATS.md](FORMATS.md).
 
 ## Builds: policy `optimized-source/1`
@@ -263,9 +263,149 @@ budget of the role:
 A zero exit code alone is never `ok`. The command prints one line per check and
 exits 1 when a check is not `ok`.
 
+## Host checks: `bench doctor`
+
+`bench doctor --lock L --role R --work W [--machine-id ID]` changes nothing. It
+prints one line per check, `ok`, `warn` or `fail`, then the host fingerprint, and
+exits 1 when a check fails. `bench run` runs the same checks (except the host lock,
+which it holds) and stops at the first failure.
+
+| Check | `fail` when | `warn` when |
+| --- | --- | --- |
+| lock, role | the lock is invalid or has no such role | |
+| architecture | the role `arch` is not the native architecture, or Python runs under emulation (Rosetta: `sysctl.proc_translated`; an interpreter of another architecture than the kernel) | |
+| machine id | the id does not match `[a-z0-9][a-z0-9-]{1,40}` | no id is given |
+| harness | | the checkout is not clean at `lock.harness` commit: results are `development`, no official run |
+| tools | | a build tool of a recipe is not on `PATH` (only `bench prepare` needs them) |
+| corpus | a stream is missing or has another size or SHA-256 (exit 3) | |
+| builds | a build is missing (exit 3) or its binary digest changed | |
+| correctness | | a cell has no correctness row for the current builds, or a row is not `ok` |
+| disk | less than 1 GiB is free in `W` | |
+| cpus | | the logical CPUs are fewer than the largest thread budget |
+| host lock | another process holds `W/host.lock` | |
+
+## Host settings: recorded, never changed
+
+The harness reads host facts; it never changes a system setting. The fingerprint
+(`host.json`) holds: architecture, OS name, version and kernel, CPU model,
+physical and logical cores, performance and efficiency cores (macOS), ISA features
+(macOS `hw.optional.*`, Linux `flags` or `Features` of `/proc/cpuinfo`), memory,
+the Python version, and:
+
+- `power`: macOS: the power source (`pmset -g batt`) and `powermode` or
+  `lowpowermode` (`pmset -g`). Linux: the cpufreq governors of all CPUs.
+- `affinity`: Linux: the allowed CPU set of the harness (`sched_getaffinity`).
+  macOS has no affinity setting: `null`.
+
+A fact that the OS does not give without privilege is `null`. The fingerprint
+holds no host name, user name or path. Its digest is part of the run identity: a
+change of power source or governor makes a new fingerprint, so a run cannot resume.
+
+`W/host.lock` allows one harness invocation at a time: `bench run`, `bench prepare`
+and `bench verify` take it. It is an OS file lock that the kernel releases when
+the process ends. A second invocation exits 1 and names the process that holds it.
+
+## Timed phase: `bench run`
+
+`bench run --lock L --role R --work W --machine-id ID [--resume RUN_ID]` executes
+one role on one host:
+
+1. Take the host lock, then run the doctor checks. Nothing is downloaded or built:
+   a missing stream or build exits 3 and names `bench prepare`.
+2. Correctness pass: each cell without a correctness row for the current builds is
+   checked with `verify.run` (see above). The run keeps one row per cell in
+   `correctness.jsonl`: the latest row of `W/verify/<build_id>.jsonl`.
+3. Check every binary digest against its build manifest again.
+4. Timed phase, one process at a time, in the order below. Only cells whose
+   correctness outcome is `ok` get attempts; for every other cell the correctness
+   row is the explicit outcome. Each attempt appends one `splotbench.attempt/1` row
+   to `attempts.jsonl` with fsync before the next attempt starts.
+
+Run class: `synthetic` for a synthetic lock, `verified` when the harness and all
+builds are `verified`, else `development`. `run.json` has state `in-progress`
+during the run, `complete` at the end and `interrupted` after SIGINT or SIGTERM.
+
+### Order: policy `seeded-rotation/1`
+
+With the lock seed `s`, and `rank(text)` the SHA-256 hex digest of the UTF-8 text:
+
+1. Cases sort by `rank("<s>/case/<case id>")`.
+2. For each case, the thread budgets ascend.
+3. For each case and budget, the rounds are the `warmups` warm-up rounds, then the
+   `repetitions` measured rounds.
+4. The base order of the implementations sorts by
+   `rank("<s>/<case id>/<threads>/<implementation id>")`. Round `k`, counted from 0
+   over both phases, starts at position `k mod n` of the base order and wraps.
+
+The harness reads the input of a case once before its first attempt, so every
+attempt finds it in the page cache. No build, download or hash runs during the
+timed phase.
+
+### Timing boundary `process-wall`
+
+The child runs in its own session and process group, with stdin from `/dev/null`
+and stdout and stderr to `logs/<sequence>-<implementation>-<case>-t<threads>.log`.
+The first log line is the exact command, with paths relative to `W` (the working
+directory of the child). The wall time is the monotonic clock from immediately
+before process creation to the return of `os.wait4`. It includes process start,
+file read, demux, decode and film grain. CPU time (user + system) and peak RSS
+come from `os.wait4`; `ru_maxrss` is normalised to bytes (bytes on macOS, KiB on
+Linux). After the child exits, the harness kills its process group and waits until
+no member is left. Nothing polls the child during the attempt.
+
+Measured: `wall_time`, `cpu_time`, `peak_rss` of the decoder process. Not measured:
+`first_frame_latency` is always `null`; the thread count that a decoder really
+starts is not observed (the row records the requested threads).
+
+### Attempt outcomes
+
+| Outcome | Rule | Metrics |
+| --- | --- | --- |
+| `ok` | exit code 0, and the reported frame count is `null` or equal to the lock | measured |
+| `incorrect` | exit code 0, but the decoder reports another frame count than the lock | measured |
+| `error` | nonzero exit code, a signal, or the decoder cannot start | measured (`null` when it did not start) |
+| `timeout` | no exit within `timeout_s`: terminate the group, wait 2 s, kill the group, reap | `null` |
+| `interrupted` | SIGINT or SIGTERM during the attempt: the same stop sequence | `null` |
+
+An `incorrect`, `error` or `timeout` attempt settles its cell: the cell gets no
+further attempts, and the assembler shows that status. Warm-ups are attempts like
+the others; they never enter the statistics.
+
+Noise flag: the assembler flags a cell `noisy` when (max − min) × 1000 of its
+measured wall times is above `noise_max_range_permille` × the median. Nothing is
+dropped, and the runner never repeats an attempt because it is slow.
+
+### Interruption and resume
+
+SIGINT or SIGTERM stops the child group, appends the attempt with outcome
+`interrupted`, writes state `interrupted`, releases the host lock and exits 130.
+During the correctness pass the current check stops at once and its process group is killed. A crash
+leaves state `in-progress`; resume treats it as interrupted.
+
+`--resume RUN_ID` continues under the same run id only when the lock digest, the
+role, the machine id, the fingerprint digest, the harness identity, the build ids
+and the build manifests (with their binary digests) are unchanged. Otherwise it
+refuses and asks for a new run. A complete run cannot resume. Resume never rewrites
+or deletes a row: it computes the remaining work from the rows present. An attempt
+slot (implementation, case, threads, phase, round) is done when it has an `ok` row;
+an interrupted slot runs again under a new sequence number. A replaced executable
+fails the binary check, so it refuses both a resume and a new timed phase.
+
+### Bundle
+
+`bench bundle --work W --run RUN_ID -o FILE.tar.gz` packs the run directory with
+the deterministic bundle writer (see FORMATS.md), for complete and interrupted runs;
+`run.json` holds the state. `bench run` prints this command at the end. It never
+bundles or uploads by itself. The bundle holds the lock, the host and build
+manifests, the correctness and attempt rows and the logs; stream bytes stay out,
+the lock keeps their URLs and digests. Records hold relative paths only.
+
 ## Fixture decoder
 
 The `fixture` adapter runs `tests/fixture_decoder.py`, a synthetic child process
 that plays a decoder. Its input selects the behaviour: correct bytes, wrong bytes,
 short or long output, a nonzero exit, "unsupported", an unknown option, a hang,
-and a hang with a descendant process. Only a synthetic lock may use it.
+and a hang with a descendant process. The `timed` overrides of its input apply to
+the timed command only (once, with a `marker` file), so a test can pass the
+correctness pass and then fail, hang or report another frame count in the timed
+phase. Only a synthetic lock may use it.

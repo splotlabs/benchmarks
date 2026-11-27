@@ -7,6 +7,7 @@ Throughput is fps = frames / wall seconds. Every case has 2 frames, so a wall ti
 
 import copy
 import csv
+import hashlib
 import json
 from unittest import mock
 import shutil
@@ -14,9 +15,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from helpers import ROOT, bench
+import synthetic_campaign
+from helpers import ROOT, bench, isolate_git, restore_git
 from splotbench import assemble, bundle, schema, validate
-from splotbench.util import BenchError
+from splotbench.build import native_arch
+from splotbench.util import BenchError, canonical_json
 from synthetic_runs import FIXTURES, digest_of, full_cells, make_lock, write_run
 
 S = 1_000_000_000
@@ -692,6 +695,49 @@ class CliTest(Base):
         self.assertFalse(self.out.exists())
         done = bench(ROOT, "assemble", "--lock", str(self.lock_path), str(arm), "-o", str(self.out), "--select", "bad")
         self.assertEqual(done.returncode, 2)
+
+
+class RealRunnerTest(unittest.TestCase):
+    """The bundle comes from the real producer: lock, prepare, run and bundle with the fixture decoder."""
+
+    def test_bundle_of_the_real_runner_assembles_into_a_valid_dataset(self):
+        isolate_git()
+        self.addCleanup(restore_git)
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        campaign, work, lock = root / "campaign", root / "work", root / "LOCK.json"
+        campaign.mkdir()
+        # The fixture decoder reads its behaviour from the stream; its raw output is 12288 bytes of 0x07.
+        stream = canonical_json({"mode": "ok", "fill": 7, "bytes": 12288, "frames": 2})
+        synthetic_campaign.write_corpus(campaign, {"synthetic-8bit": (8, stream)})
+        manifest = campaign / "corpus.toml"
+        manifest.write_text(manifest.read_text().replace("6" * 64, hashlib.sha256(b"\x07" * 12288).hexdigest()))
+        role = "arm64" if native_arch() == "aarch64" else "x86-64"
+        common = ["--lock", str(lock), "--role", role, "--work", str(work)]
+        archive = root / "run.tar.gz"
+        steps = [
+            ["lock", str(synthetic_campaign.make_plan(campaign)), "-o", str(lock)],
+            ["prepare", *common, "--jobs", "1"],
+            ["run", *common, "--machine-id", "synthetic-host"],
+        ]
+        for step in steps:
+            done = bench(ROOT, *step)
+            self.assertEqual(done.returncode, 0, f"{step[0]}: {done.stderr}")
+        (run_id,) = [path.name for path in (work / "runs").iterdir()]
+        self.assertIn(f"bench bundle --work {work} --run {run_id} -o {run_id}.tar.gz", done.stdout)
+        for step in (["bundle", "--work", str(work), "--run", run_id, "-o", str(archive)],
+                     ["assemble", "--lock", str(lock), str(archive), "-o", str(root / "out")]):  # fmt: skip
+            done = bench(ROOT, *step)
+            self.assertEqual(done.returncode, 0, f"{step[0]}: {done.stderr}")
+        (dataset,) = (root / "out" / "datasets").iterdir()
+        done = bench(ROOT, "validate", str(dataset))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        summary = json.loads((dataset / "summary.json").read_text())
+        self.assertEqual(summary["origin"], "synthetic")
+        cells = [cell for cell in summary["cells"] if cell["machine_id"] == "synthetic-host"]
+        self.assertEqual(len(cells), 2 * len(json.loads(lock.read_text())["lock"]["roles"][role]["threads"]))
+        self.assertEqual({(cell["status"], cell["n_valid"]) for cell in cells}, {("ok", 3)})
 
 
 if __name__ == "__main__":

@@ -15,7 +15,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-from . import build
+from . import build, host
 from .provenance import HARNESS_ROOT
 from .util import EXIT_PREREQUISITE, BenchError, canonical_json, sha256_bytes, sha256_file
 
@@ -257,10 +257,11 @@ def _prepare(args: argparse.Namespace) -> int:
 
     lock = plan.load_lock(args.lock)
     plan.check_role(lock, args.role)
-    paths = ensure(lock, args.work, offline=args.offline)
-    print(f"corpus: {len(paths)} streams verified in {Path(args.work) / 'corpus'}")
-    for manifest in build.ensure(lock, args.role, args.work, args.jobs, offline=args.offline):
-        print(f"build: {manifest['implementation']} {manifest['build_id']} in {manifest['binary_path']}")
+    with host.HostLock(args.work):  # no download or build while `bench run` measures
+        paths = ensure(lock, args.work, offline=args.offline)
+        print(f"corpus: {len(paths)} streams verified in {Path(args.work) / 'corpus'}")
+        for manifest in build.ensure(lock, args.role, args.work, args.jobs, offline=args.offline):
+            print(f"build: {manifest['implementation']} {manifest['build_id']} in {manifest['binary_path']}")
     return 0
 
 

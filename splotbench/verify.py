@@ -18,7 +18,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from . import adapters, build, corpus, plan, provenance, schema
+from . import adapters, build, corpus, host, plan, provenance, schema
 from .util import EXIT_FAILURE, EXIT_PREREQUISITE, BenchError, canonical_json, sha256_file
 
 CHUNK = 1 << 20
@@ -152,7 +152,7 @@ def _next_log(directory: Path, case_id: str, threads: int) -> Path:
 def _append(path: Path, row: dict) -> None:
     problems = schema.validate(row)
     if problems:
-        raise BenchError(f"internal error: correctness row is invalid: {problems[0]}")
+        raise BenchError(f"internal error: {row['schema']} row is invalid: {problems[0]}")
     with open(path, "ab") as file:
         file.write(canonical_json(row) + b"\n")
         file.flush()
@@ -242,9 +242,10 @@ def run(
 
 
 def _verify(args: argparse.Namespace) -> int:
-    rows = run(
-        plan.load_lock(args.lock), args.role, args.work, case=args.case, implementation=args.implementation, threads=args.threads
-    )
+    with host.HostLock(args.work):  # one harness run at a time
+        rows = run(
+            plan.load_lock(args.lock), args.role, args.work, case=args.case, implementation=args.implementation, threads=args.threads
+        )
     for row in rows:
         detail = f" ({row['detail']})" if row["detail"] else ""
         print(f"{row['outcome']}: {row['implementation']} {row['case_id']} threads={row['threads']}{detail}")

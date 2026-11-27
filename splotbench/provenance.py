@@ -88,7 +88,7 @@ def snapshot(directory: Path) -> dict:
 
     commit = head_commit(directory)
     tree = _git(directory, "rev-parse", "HEAD^{tree}").decode().strip() if commit else None
-    dirty = bool(_git(directory, "status", "--porcelain"))
+    dirty = bool(_git(directory, "--no-optional-locks", "status", "--porcelain"))  # never rewrites the index
     gitlinks = {}
     for entry in _split(_git(directory, "ls-files", "--stage", "-z")):
         meta, _, path = entry.partition("\t")

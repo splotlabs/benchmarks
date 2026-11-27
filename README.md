@@ -36,13 +36,17 @@ Run the commands from the repository root.
 ./bench prepare --lock LOCK --role ROLE --work W [--jobs N] [--offline]
                           # fetch and verify the corpus, fetch and build the pinned decoders
 ./bench verify --lock L --role R --work W   # untimed correctness pass of the prepared builds
+./bench doctor --lock L --role R --work W [--machine-id ID]   # preflight checks; changes nothing
+./bench run --lock L --role R --work W --machine-id ID [--resume RUN_ID]
+                          # correctness pass and timed attempts into W/runs/<run_id>/
+./bench bundle --work W --run RUN_ID -o FILE.tar.gz   # portable bundle of one run; no upload
 ./bench assemble --lock LOCK.json BUNDLE... -o OUT [--select ROLE=RUN_ID] [--official]
                           # check bundles and write OUT/datasets/<dataset_id>/
 ./bench publish DATASET_DIR [--to DIR] [--dry-run] [--promote] [--allow-local]
                           # copy a dataset into published/ for a pull request; see docs/PUBLISHING.md
 ```
 
-The builds, the decoder adapters and the correctness pass are described in
+The builds, the decoder adapters, the correctness pass and the timed runs are described in
 [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
 
 The data formats and identities are described in [docs/FORMATS.md](docs/FORMATS.md).
@@ -67,6 +71,7 @@ with Python 3.11 and 3.14.
 | `splotbench/` | The harness package. `cli.py` registers one parser per command module. `schema.py` validates, `provenance.py` records source, release and binary identity, `bundle.py` writes and reads bundles, `assemble.py` checks bundles and builds datasets, `publish.py` copies a dataset into `published/` on explicit command. |
 | `corpus/`, `campaigns/` | The pinned corpus manifest and suites, and the campaign plan template. `plan.py` makes locks and the matrix, `corpus.py` verifies the stream cache. |
 | `splotbench/build.py`, `splotbench/adapters/`, `splotbench/verify.py` | Pinned decoder builds, one adapter per decoder (`splot`, `dav2d`, `avm`, `fixture`), the correctness pass (`bench verify`). |
+| `splotbench/host.py`, `splotbench/run.py` | Host fingerprint, machine id and host lock; `bench doctor`, `bench run` (correctness pass, timed phase, resume) and `bench bundle`. |
 | `published/` | Published official datasets and `index.json`, added only with `bench publish` through a pull request. Existing dataset directories never change. |
 | `schemas/` | JSON Schema files: the source of truth for every data format. |
 | `docs/` | Format documentation, the methodology (`METHODOLOGY.md`) and the publishing procedure. |
