@@ -447,6 +447,40 @@ class ImmutableTest(unittest.TestCase):
             self.assertEqual(len(problems), 1, name)
             self.assertIn(f"published/datasets/{self.ID}/{name}: added to the existing", problems[0])
 
+    def test_published_replaced_by_a_link_to_altered_datasets_fails(self):
+        shutil.copytree(self.published, self.repo / "other")
+        (self.repo / "other" / "datasets" / self.ID / "summary.json").write_text("altered\n")
+        shutil.rmtree(self.published)
+        self.published.symlink_to("other")
+        self.commit()
+        with self.assertRaises(BenchError) as raised:
+            validate.immutable_problems(self.published, "base")
+        self.assertIn("symbolic link", str(raised.exception))
+        self.assertEqual(validate.published_problems(self.published), ["the published directory is a symbolic link; it must be a real directory"])
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            self.assertEqual(cli.main(["validate", str(self.published), "--immutable-since", "base"]), 1)
+
+    def test_a_link_above_the_published_directory_inside_the_repository_fails(self):
+        (self.repo / "site").mkdir()
+        (self.repo / "site" / "published").symlink_to(self.published)
+        (self.repo / "alias").symlink_to("site")
+        for path in (self.repo / "alias" / "published", self.repo / "site" / "published"):
+            with self.assertRaises(BenchError, msg=str(path)):
+                validate.immutable_problems(path, "base")
+        # a real directory below a real path is fine, spelled with or without a link above the repository
+        self.assertEqual(validate.immutable_problems(self.published, "base"), [])
+
+    def test_a_link_above_the_repository_top_is_not_a_false_failure(self):
+        with tempfile.TemporaryDirectory() as outside:
+            alias = Path(outside) / "alias"
+            alias.symlink_to(self.repo)  # like /tmp -> /private/tmp on macOS
+            self.existing("added.json").write_text("x\n")
+            self.commit()
+            problems = validate.immutable_problems(alias / "published", "base")
+            self.assertEqual(len(problems), 1)
+            self.assertIn("added.json: added to the existing", problems[0])
+
     def test_bad_ref_and_command_line(self):
         with self.assertRaises(BenchError):
             validate.immutable_problems(self.published, "--output=x")
