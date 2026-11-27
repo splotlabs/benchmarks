@@ -245,6 +245,23 @@ def resolve(
     return {"commit": commit, "identity": "release" if release else "development", "release": release}
 
 
+def check_harness(source: dict, repository: str) -> None:
+    """A standard lock names a clean harness commit that the upstream serves, so another host can check it out."""
+    commit = source["commit"]
+    if commit is None or not clean_at(source, commit):
+        raise BenchError(
+            "the harness checkout is not a clean Git commit: a second host could not check out this harness. "
+            "Commit and push the change, or lock from a clean released commit."
+        )
+    try:
+        _verify_commit(repository, commit, commit)
+    except BenchError:
+        raise BenchError(
+            f"harness commit {commit} cannot be fetched from {repository}: a second host could not check out "
+            "this harness. Push the commit (or check the network), or lock from a released commit."
+        ) from None
+
+
 def clean_at(source: dict, commit: str | None) -> bool:
     """True for a Git snapshot without local changes at exactly `commit`."""
     return source["vcs"] == "git" and not source["dirty"] and source["commit"] == commit

@@ -67,6 +67,12 @@ a lock. Plan keys: `name`, `origin`, `suite`, `warmups`, `repetitions`, `timeout
 `suites` name other manifest files, relative to the plan; the default is `corpus/`
 in the harness.
 
+`bench lock` of a standard plan needs a clean harness checkout whose commit the
+harness upstream serves (the fetch-by-commit check of the decoders); otherwise it
+exits 1, because a second host could not check out that harness. A synthetic plan
+skips this check. `bench validate` prints the lock digest and the campaign id of a
+valid lock.
+
 The corpus manifest (`corpus/ewouth-av2.toml`) is a pinned import. The corpus digest
 is the sha256 of the canonical JSON of the whole parsed manifest, so any change to a
 stream fact changes every lock. The manifest keeps facts that the lock schema has no

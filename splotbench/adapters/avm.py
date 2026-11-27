@@ -66,6 +66,10 @@ def version(binary: Path) -> str | None:
     return found.group(1).strip() if found else None
 
 
+# The timed command always prints a frame counter (--summary prints the decoded and shown frames at the end).
+TIMED_REPORTS_FRAMES = True
+
+
 def parse_frames(stderr: str) -> int | None:
     found = re.findall(r"(\d+) decoded frames/(\d+) showed frames", stderr)
     return int(found[-1][1]) if found else None

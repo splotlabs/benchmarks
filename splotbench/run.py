@@ -10,6 +10,7 @@ the adapter functions and the matrix of `plan.py`. docs/METHODOLOGY.md has the r
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
@@ -37,7 +38,7 @@ RSS_UNIT = {"darwin": 1, "linux": 1024}
 
 
 class Interrupted(KeyboardInterrupt):
-    """SIGINT or SIGTERM arrived."""
+    """SIGINT, SIGTERM or SIGHUP arrived."""
 
 
 class Slot(NamedTuple):
@@ -114,6 +115,7 @@ class _Context:
     def __init__(self, lock: dict, role: str, work: Path, machine_id: str | None) -> None:
         self.lock, self.role, self.work, self.machine_id = lock, role, Path(work), machine_id
         self.facts = self.harness = self.inputs = self.builds = None
+        self.pass_fds: tuple[int, ...] = ()
 
 
 def _check_architecture(ctx: _Context) -> tuple[str, str]:
@@ -159,23 +161,31 @@ def _check_corpus(ctx: _Context) -> tuple[str, str]:
 
 def _check_builds(ctx: _Context) -> tuple[str, str]:
     ctx.builds = build.ensure(ctx.lock, ctx.role, ctx.work, offline=True)
-    names = ", ".join(f"{m['implementation']} {m['build_id']} ({m['class']})" for m in ctx.builds)
-    return "ok", f"{names}; binary digests unchanged"
+    lines = "".join(
+        f"\n  build {m['implementation']} {m['source']['commit']} {m['source']['identity']} {m['build_id']} {m['binary_sha256']}"
+        for m in ctx.builds
+    )
+    return "ok", f"{len(ctx.builds)} builds, class {', '.join(sorted({m['class'] for m in ctx.builds}))}; binary digests unchanged{lines}"
 
 
-def verified_rows(work: Path, builds: list[dict]) -> dict:
-    """The latest correctness row per (implementation, case, threads) of the given builds."""
+def verified_rows(lock: dict, work: Path, builds: list[dict]) -> dict:
+    """The latest correctness row per (implementation, case, threads) of the given builds for the lock cases.
+
+    A row counts only when it was checked against the reference of the case in this lock.
+    """
+    cases = {case["id"]: case for case in lock["lock"]["suite"]["cases"]}
     rows = {}
     for manifest in builds:
         for row in _rows(Path(work) / "verify" / f"{manifest['build_id']}.jsonl"):
-            rows[_key(row)] = row
+            if row["case_id"] in cases and verify.matches_case(row, cases[row["case_id"]]):
+                rows[_key(row)] = row
     return rows
 
 
 def _check_correctness(ctx: _Context) -> tuple[str, str]:
     if ctx.builds is None:
         return "warn", "not checked: the builds are not ready"
-    rows = verified_rows(ctx.work, ctx.builds)
+    rows = verified_rows(ctx.lock, ctx.work, ctx.builds)
     keys = [(c.implementation, c.case, c.threads) for c in plan.enumerate_cells(ctx.lock, ctx.role)]
     missing = [key for key in keys if key not in rows]
     failed = [key for key in keys if key in rows and rows[key]["outcome"] != "ok"]
@@ -207,7 +217,7 @@ def _check_cpus(ctx: _Context) -> tuple[str, str]:
 def _check_host_lock(ctx: _Context) -> tuple[str, str]:
     holder = host.lock_holder(ctx.work)
     if holder:
-        raise BenchError(f"{ctx.work / host.LOCK_NAME} is held by process {holder}. Wait until it ends.")
+        raise BenchError(host.held_message(ctx.work / host.LOCK_NAME, holder))
     return "ok", "free"
 
 
@@ -254,19 +264,36 @@ def _doctor(args: argparse.Namespace) -> int:
 
 # --- child processes -------------------------------------------------------------
 
+START = "# attempt "  # first log line: the durable start record of an attempt
+
 
 class _Child:
     """One timed decoder process. `stop` terminates its group, waits GRACE_S, then kills the group."""
 
-    def __init__(self, pid: int) -> None:
-        self.pid, self.reason = pid, None
+    def __init__(self) -> None:
+        self.pid, self.reason = None, None
         self.lock, self.exited = threading.Lock(), threading.Event()
 
     def stop(self, reason: str) -> None:
-        with self.lock:  # signal only while the leader is not reaped, so the group id is ours
+        with self.lock:
             if self.exited.is_set() or self.reason:
                 return
             self.reason = reason
+            if self.pid is None:
+                return  # not started yet: `started` stops it
+        self._terminate()
+
+    def started(self, pid: int) -> None:
+        with self.lock:
+            self.pid = pid
+            if self.reason is None:
+                return
+        threading.Thread(target=self._terminate, daemon=True).start()
+
+    def _terminate(self) -> None:
+        with self.lock:  # signal only while the leader is not reaped, so the group id is ours
+            if self.exited.is_set():
+                return
             verify._signal_group(self.pid, signal.SIGTERM)
         if not self.exited.wait(GRACE_S):
             with self.lock:
@@ -279,64 +306,103 @@ class _Child:
 
 
 class _Stop:
-    """Signal handler for SIGINT and SIGTERM. In the timed phase it stops the child group, else it raises."""
+    """Handler for SIGINT, SIGTERM and SIGHUP.
+
+    During an attempt it stops the child group. Inside `raising()` (checks and the correctness
+    pass) it raises at once. Elsewhere it only records the request; `check()` raises at the next
+    safe point, so no directory, row or state file is left half written.
+    """
+
+    SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
 
     def __init__(self) -> None:
-        self.requested, self.child, self.raise_now = False, None, True
+        self.requested, self.child, self.raise_now = False, None, False
 
     def __call__(self, _number, _frame) -> None:
         self.requested = True
         if self.child is not None:
-            self.stop_child()
+            # A thread: the handler runs in the main thread, which must keep waiting for the child.
+            threading.Thread(target=self.child.stop, args=("interrupted",), daemon=True).start()
         elif self.raise_now:
             raise Interrupted
 
-    def stop_child(self) -> None:
-        # A thread: the handler runs in the main thread, which must keep waiting for the child.
-        threading.Thread(target=self.child.stop, args=("interrupted",), daemon=True).start()
+    @contextlib.contextmanager
+    def raising(self):
+        self.check()
+        self.raise_now = True
+        try:
+            yield
+        finally:
+            self.raise_now = False
 
     def check(self) -> None:
         if self.requested:
             raise Interrupted
 
 
-def _wait_group_gone(pgid: int) -> None:
+def _group_alive(pgid: int) -> bool:
+    try:
+        os.killpg(pgid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        pass
+    return True
+
+
+def _kill_group(pgid: int) -> None:
+    """Kill the members left in the group of a reaped leader, then wait until none is left."""
     # shortcut: a member counts until it is reaped, so a zombie under a non-reaping PID 1 (some containers)
     # stops the run here; scan /proc for zombies if such hosts must be supported.
+    if _group_alive(pgid):
+        verify._signal_group(pgid, signal.SIGKILL)
     deadline = time.monotonic() + GRACE_S
-    while True:
-        try:
-            os.killpg(pgid, 0)
-        except ProcessLookupError:
-            return
-        except PermissionError:
-            pass
+    while _group_alive(pgid):
         if time.monotonic() > deadline:
             raise BenchError(f"process group {pgid} still has members after SIGKILL. Stop them, then resume the run.")
         time.sleep(POLL_S)
 
 
-def _attempt(work: Path, argv: list[str], log: Path, timeout_s: int, expected: int, adapter, stop: _Stop) -> tuple:
-    """Run one timed decode. Return (outcome, exit code, reported frames, metrics)."""
+def _fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _attempt(ctx: _Context, argv: list[str], log: Path, record: dict, adapter, stop: _Stop) -> tuple:
+    """Run one timed decode. Return (outcome, exit code, reported frames, metrics, detail).
+
+    Before the child starts, the log gets the start record (the row of an interrupted attempt)
+    and the command, both fsynced. The log is created exclusively and never truncated.
+    """
     nothing = {"wall_time": None, "cpu_time": None, "peak_rss": None, "first_frame_latency": None}
-    with open(log, "wb") as file:
-        file.write(f"$ {shlex.join(argv)}\n".encode())
+    timeout_s = ctx.lock["lock"]["measurement"]["timeout_s"]
+    with open(log, "xb") as file:
+        file.write(f"{START}{json.dumps(record, sort_keys=True)}\n$ {shlex.join(argv)}\n".encode())
         file.flush()
-        try:
-            started = time.monotonic_ns()
-            process = subprocess.Popen(
-                argv, cwd=work, stdin=subprocess.DEVNULL, stdout=file, stderr=subprocess.STDOUT, start_new_session=True
-            )
-        except OSError as error:
-            file.write(f"cannot start the decoder: {error}\n".encode())
-            return "error", None, None, nothing
-        child = _Child(process.pid)
+        os.fsync(file.fileno())
+        _fsync_directory(log.parent)
+        child = _Child()
         stop.child = child
         if stop.requested:
-            stop.stop_child()
+            child.stop("interrupted")
         timer = threading.Timer(timeout_s, child.stop, ("timeout",))
         timer.daemon = True
         timer.start()
+        try:
+            started = time.monotonic_ns()
+            process = subprocess.Popen(
+                argv, cwd=ctx.work, stdin=subprocess.DEVNULL, stdout=file, stderr=subprocess.STDOUT,
+                start_new_session=True, pass_fds=ctx.pass_fds,
+            )  # fmt: skip
+        except OSError as error:
+            timer.cancel()
+            stop.child = None
+            file.write(f"# harness: cannot start the decoder: {error}\n".encode())
+            return "error", None, None, nothing, f"cannot start the decoder: {error}"
+        child.started(process.pid)
         try:
             _pid, status, usage = os.wait4(process.pid, 0)
             wall = time.monotonic_ns() - started
@@ -348,26 +414,35 @@ def _attempt(work: Path, argv: list[str], log: Path, timeout_s: int, expected: i
             child.reaped()
             timer.cancel()
             stop.child = None
-    code = process.returncode = os.waitstatus_to_exitcode(status)
-    # Descendants share the group: kill them and wait until the group is gone before anything else runs.
-    verify._signal_group(process.pid, signal.SIGKILL)
-    _wait_group_gone(process.pid)
-    exit_code = code if code >= 0 else None
-    if child.reason:
-        return ("timeout" if child.reason == "timeout" else "interrupted"), exit_code, None, nothing
-    if code != 0:
-        outcome, reported = "error", None
-    else:
-        reported = adapter.parse_frames(log.read_text(errors="replace").partition("\n")[2])  # not the command line
-        outcome = "incorrect" if reported is not None and reported != expected else "ok"
-    rss = RSS_UNIT.get(sys.platform)
-    metrics = {
-        "wall_time": wall,
-        "cpu_time": round((usage.ru_utime + usage.ru_stime) * 1e9),
-        "peak_rss": usage.ru_maxrss * rss if rss else None,
-        "first_frame_latency": None,  # defined, not measured
-    }
-    return outcome, exit_code, reported, metrics
+        code = process.returncode = os.waitstatus_to_exitcode(status)
+        # Descendants share the group: kill them and wait until the group is gone before anything else runs.
+        _kill_group(process.pid)
+        exit_code, detail = (code if code >= 0 else None), None
+        if child.reason:
+            outcome, reported, metrics = ("timeout" if child.reason == "timeout" else "interrupted"), None, nothing
+        else:
+            rss = RSS_UNIT.get(sys.platform)
+            metrics = {
+                "wall_time": wall,
+                "cpu_time": round((usage.ru_utime + usage.ru_stime) * 1e9),
+                "peak_rss": usage.ru_maxrss * rss if rss else None,
+                "first_frame_latency": None,  # defined, not measured
+            }
+            reported = None
+            if code != 0:
+                outcome = "error"
+            else:
+                file.flush()
+                output = log.read_text(errors="replace").split("\n", 2)[-1]  # not the start record and command
+                reported = adapter.parse_frames(output)
+                if reported is None and adapter.TIMED_REPORTS_FRAMES:
+                    outcome, detail = "error", "the decoder printed no frame count, but its timed mode always prints one"
+                else:
+                    outcome = "incorrect" if reported is not None and reported != record["workload"]["frames"]["expected"] else "ok"
+        if detail:
+            file.write(f"# harness: {detail}\n".encode())
+    verify.cap_log(log)
+    return outcome, exit_code, reported, metrics, detail
 
 
 def _read_once(path: Path) -> None:
@@ -381,14 +456,16 @@ def _read_once(path: Path) -> None:
 
 
 def _create(ctx: _Context, lock_bytes: bytes, host_document: dict, run_class: str) -> tuple[Path, dict]:
+    """Write the run directory under a temporary name, then rename it: it exists complete or not at all."""
     run_id = f"{ctx.role}-{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}-{secrets.token_hex(4)}"
-    run_dir = ctx.work / "runs" / run_id
-    (run_dir / "logs").mkdir(parents=True)
-    write_atomic(run_dir / "lock.json", lock_bytes)
-    _write_json(run_dir / "host.json", host_document)
-    _write_json(run_dir / "builds.json", ctx.builds)
+    runs = ctx.work / "runs"
+    run_dir, partial = runs / run_id, runs / f".{run_id}.partial"
+    (partial / "logs").mkdir(parents=True)
+    write_atomic(partial / "lock.json", lock_bytes)
+    _write_json(partial / "host.json", host_document)
+    _write_json(partial / "builds.json", ctx.builds)
     for name in ("correctness.jsonl", "attempts.jsonl"):
-        write_atomic(run_dir / name, b"")
+        write_atomic(partial / name, b"")
     run_doc = {
         "schema": "splotbench.run/1",
         "run_id": run_id,
@@ -404,8 +481,28 @@ def _create(ctx: _Context, lock_bytes: bytes, host_document: dict, run_class: st
         "started_utc": _now(),
         "finished_utc": None,
     }
-    _write_json(run_dir / "run.json", run_doc)
+    _write_json(partial / "run.json", run_doc)
+    os.rename(partial, run_dir)
+    _fsync_directory(runs)
     return run_dir, run_doc
+
+
+def _recover_partial_line(path: Path) -> None:
+    """A crash can leave a last line without its newline. It is not a row: move it to logs/ and cut it off."""
+    data = path.read_bytes()
+    if not data or data.endswith(b"\n"):
+        return
+    cut = data.rfind(b"\n") + 1
+    logs = path.parent / "logs"
+    number = 1
+    while (side := logs / f"{path.stem}-partial-{number}.txt").exists():
+        number += 1
+    write_atomic(side, data[cut:])
+    with open(path, "r+b") as file:
+        file.truncate(cut)
+        file.flush()
+        os.fsync(file.fileno())
+    print(f"{path.name}: the last line was incomplete ({len(data) - cut} bytes, not a row); moved it to logs/{side.name}", flush=True)
 
 
 def _resume(ctx: _Context, run_id: str, host_document: dict) -> tuple[Path, dict]:
@@ -439,38 +536,70 @@ def _resume(ctx: _Context, run_id: str, host_document: dict) -> tuple[Path, dict
             f"run {run_id} cannot resume: the {', '.join(changed)} changed since it started. "
             "Start a new run without --resume."
         )
+    for name in ("correctness.jsonl", "attempts.jsonl"):
+        _recover_partial_line(run_dir / name)
     run_doc.update(state="in-progress", finished_utc=None)
     _write_json(path, run_doc)
     return run_dir, run_doc
 
 
 def _correctness(ctx: _Context, run_dir: Path, stop: _Stop) -> None:
-    """Give every cell one correctness row in the run; check the cells without a row for the current builds."""
+    """Give every cell one correctness row in the run; check the cells without a matching row for the current builds."""
     path = run_dir / "correctness.jsonl"
     have = {_key(row) for row in _rows(path)}
-    latest = verified_rows(ctx.work, ctx.builds)
+    latest = verified_rows(ctx.lock, ctx.work, ctx.builds)
     for cell in plan.enumerate_cells(ctx.lock, ctx.role):
         key = (cell.implementation, cell.case, cell.threads)
         if key in have:
             continue
         row = latest.get(key)
         if row is None:
-            stop.raise_now = True
-            try:
-                (row,) = verify.run(ctx.lock, ctx.role, ctx.work, case=cell.case, implementation=cell.implementation, threads=cell.threads)
-            finally:
-                stop.raise_now = False
+            with stop.raising():
+                (row,) = verify.run(
+                    ctx.lock, ctx.role, ctx.work, case=cell.case, implementation=cell.implementation,
+                    threads=cell.threads, pass_fds=ctx.pass_fds,
+                )  # fmt: skip
         verify._append(path, row)
         print(f"correctness {row['implementation']} {row['case_id']} threads={row['threads']}: {row['outcome']}", flush=True)
         stop.check()
 
 
+def _log_sequence(log: Path) -> int:
+    prefix = log.name.partition("-")[0]
+    return int(prefix) if prefix.isdigit() else 0
+
+
+def _lost_attempts(run_dir: Path, rows: list[dict]) -> list[dict]:
+    """Rows for attempts that have a start record in their log but no row: the harness ended during them."""
+    present = {row["sequence"] for row in rows}
+    lost = []
+    for log in sorted((run_dir / "logs").glob("*.log"), key=_log_sequence):
+        with open(log, "rb") as file:
+            first = file.readline().decode("utf-8", "replace")
+        if not first.startswith(START) or not first.endswith("\n"):
+            continue  # no durable start record: the child never started
+        try:
+            record = schema.loads(first.removeprefix(START))
+        except ValueError:
+            continue
+        if schema.validate(record) == [] and record["sequence"] not in present:
+            lost.append(record)
+    return lost
+
+
 def _timed(ctx: _Context, run_dir: Path, run_id: str, stop: _Stop) -> None:
     """Run every remaining attempt. Rows present are never changed; an interrupted attempt is repeated."""
     body = ctx.lock["lock"]
+    attempts = run_dir / "attempts.jsonl"
+    rows = _rows(attempts)
+    for record in _lost_attempts(run_dir, rows):
+        verify._append(attempts, record)
+        rows.append(record)
+        print(f"attempt {record['sequence']} has a start record but no row; recorded it as interrupted", flush=True)
+        stop.check()
     correctness = {_key(row): row for row in _rows(run_dir / "correctness.jsonl")}
-    rows = _rows(run_dir / "attempts.jsonl")
-    sequence = max((row["sequence"] for row in rows), default=0)
+    # No sequence number is used twice: a log without a row still holds its number.
+    sequence = max([row["sequence"] for row in rows] + [_log_sequence(log) for log in (run_dir / "logs").glob("*.log")] + [0])
     done = {(*_key(row), row["phase"], row["round"]) for row in rows if row["outcome"] == "ok"}
     failed = {_key(row) for row in rows if row["outcome"] in FAILED}
     builds = {manifest["implementation"]: manifest for manifest in ctx.builds}
@@ -486,17 +615,14 @@ def _timed(ctx: _Context, run_dir: Path, run_id: str, stop: _Stop) -> None:
         if warm != slot.case:
             _read_once(ctx.inputs[slot.case])
             warm = slot.case
+            stop.check()
         sequence += 1
         manifest, case = builds[slot.implementation], cases[slot.case]
         adapter = build.adapter_for(ctx.lock, implementations[slot.implementation])
         # Relative paths from the work directory: no absolute path enters the logs.
         argv = adapter.timed_command(Path(manifest["binary_path"]), corpus.cache_path(Path(), case), slot.threads)
         log = run_dir / "logs" / f"{sequence}-{slot.implementation}-{slot.case}-t{slot.threads}.log"
-        started = _now()
-        outcome, code, reported, metrics = _attempt(
-            ctx.work, argv, log, body["measurement"]["timeout_s"], case["frames"], adapter, stop
-        )
-        row = {
+        record = {
             "schema": "splotbench.attempt/1",
             "attempt_id": f"{run_id}#{sequence}",
             "run_id": run_id,
@@ -507,17 +633,25 @@ def _timed(ctx: _Context, run_dir: Path, run_id: str, stop: _Stop) -> None:
             "threads": slot.threads,
             "phase": slot.phase,
             "round": slot.round,
-            "started_utc": started,
-            "outcome": outcome,
-            "exit_code": code,
+            "started_utc": _now(),
+            "outcome": "interrupted",
+            "exit_code": None,
             "workload": {
                 "kind": "decode",
-                "frames": {"expected": case["frames"], "reported": reported, "source": "lock" if reported is None else "decoder"},
-                "metrics": metrics,
+                "frames": {"expected": case["frames"], "reported": None, "source": "lock"},
+                "metrics": {"wall_time": None, "cpu_time": None, "peak_rss": None, "first_frame_latency": None},
             },
         }
-        verify._append(run_dir / "attempts.jsonl", row)
-        print(f"attempt {sequence} {slot.implementation} {slot.case} threads={slot.threads} {slot.phase} {slot.round}: {outcome}", flush=True)
+        outcome, code, reported, metrics, detail = _attempt(ctx, argv, log, record, adapter, stop)
+        row = {**record, "outcome": outcome, "exit_code": code}
+        row["workload"] = {
+            "kind": "decode",
+            "frames": {"expected": case["frames"], "reported": reported, "source": "lock" if reported is None else "decoder"},
+            "metrics": metrics,
+        }
+        verify._append(attempts, row)
+        note = f" ({detail})" if detail else ""
+        print(f"attempt {sequence} {slot.implementation} {slot.case} threads={slot.threads} {slot.phase} {slot.round}: {outcome}{note}", flush=True)
         if outcome in FAILED:
             failed.add(key)
         if outcome == "interrupted":
@@ -533,44 +667,51 @@ def execute(lock_path: Path, role: str, work: Path, machine_id: str, resume: str
     if resume is not None and not _is_run_id(resume):
         raise BenchError(f"--resume {resume!r} is not a run id like arm64-20260101T000000Z-0123abcd.", 2)
     ctx, stop = _Context(lock, role, work, machine_id), _Stop()
-    with host.HostLock(work):
-        previous = {number: signal.signal(number, stop) for number in (signal.SIGINT, signal.SIGTERM)}
-        run_dir = None
+    with host.HostLock(work) as held:
+        ctx.pass_fds = (held.descriptor,)  # each decoder keeps the host lock while it lives
+        previous = {number: signal.signal(number, stop) for number in stop.SIGNALS}
+        run_dir = run_doc = None
         try:
-            for name, check in CHECKS[:-1]:  # this process holds the host lock
-                status, message = check(ctx)
-                _line(status, name, message)
-            host_document = host.host_document(machine_id, ctx.facts)
-            synthetic = lock["lock"]["origin"] == "synthetic"
-            verified = ctx.harness["class"] == "verified" and all(m["class"] == "verified" for m in ctx.builds)
-            run_class = "synthetic" if synthetic else "verified" if verified else "development"
-            if resume:
-                run_dir, run_doc = _resume(ctx, resume, host_document)
-            else:
-                run_dir, run_doc = _create(ctx, lock_path.read_bytes(), host_document, run_class)
-            print(f"run {run_doc['run_id']} ({run_class}) in {run_dir}", flush=True)
-            _correctness(ctx, run_dir, stop)
-            stop.raise_now = False
-            for manifest in ctx.builds:
-                provenance.check_binary(work, manifest)
-            _timed(ctx, run_dir, run_doc["run_id"], stop)
-            state = "complete"
-        except Interrupted:
-            if run_dir is None:
-                raise BenchError("interrupted before the run started.", 130) from None
-            state = "interrupted"
+            try:
+                with stop.raising():
+                    for name, check in CHECKS[:-1]:  # this process holds the host lock
+                        status, message = check(ctx)
+                        _line(status, name, message)
+                host_document = host.host_document(machine_id, ctx.facts)
+                synthetic = lock["lock"]["origin"] == "synthetic"
+                verified = ctx.harness["class"] == "verified" and all(m["class"] == "verified" for m in ctx.builds)
+                run_class = "synthetic" if synthetic else "verified" if verified else "development"
+                if resume:
+                    run_dir, run_doc = _resume(ctx, resume, host_document)
+                else:
+                    run_dir, run_doc = _create(ctx, lock_path.read_bytes(), host_document, run_class)
+                print(f"run {run_doc['run_id']} ({run_class}) in {run_dir}", flush=True)
+                stop.check()
+                _correctness(ctx, run_dir, stop)
+                for manifest in ctx.builds:
+                    provenance.check_binary(work, manifest)
+                _timed(ctx, run_dir, run_doc["run_id"], stop)
+                state = "complete"
+            except Interrupted:
+                if run_dir is None:
+                    raise BenchError(
+                        "interrupted before the run started: no run directory was created and no decoder was started.", 130
+                    ) from None
+                state = "interrupted"
+            run_doc.update(state=state, finished_utc=_now())
+            _write_json(run_dir / "run.json", run_doc)
         finally:
             for number, handler in previous.items():
                 signal.signal(number, handler)
-        run_doc.update(state=state, finished_utc=_now())
-        _write_json(run_dir / "run.json", run_doc)
     run_id = run_doc["run_id"]
     rows = len(_rows(run_dir / "attempts.jsonl"))
-    print(f"run {run_id}: {state}, {rows} attempt rows")
+    checked = len(_rows(run_dir / "correctness.jsonl"))
+    print(f"run {run_id}: {state}, {checked} correctness rows, {rows} attempt rows")
     print(f"bundle it with: bench bundle --work {shlex.quote(str(work))} --run {run_id} -o {run_id}.tar.gz")
     if state == "interrupted":
         raise BenchError(
-            f"interrupted. Run {run_id} keeps its rows. Continue it with `bench run --lock {shlex.quote(str(lock_path))} "
+            f"interrupted. Run {run_id} is recorded with {checked} correctness rows and {rows} attempt rows; "
+            f"no decoder is running. Continue it with `bench run --lock {shlex.quote(str(lock_path))} "
             f"--role {role} --work {shlex.quote(str(work))} --machine-id {machine_id} --resume {run_id}`.",
             130,
         )
@@ -620,7 +761,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         description="Take the host lock, run the doctor checks, check the cells without a correctness row, "
         "then run every timed attempt of the role (docs/METHODOLOGY.md) into W/runs/<run_id>/. "
         "Nothing is downloaded or built: missing inputs or builds exit 3; run `bench prepare` first. "
-        "SIGINT or SIGTERM stops the decoder, keeps the rows, marks the run interrupted and exits 130.",
+        "SIGINT, SIGTERM or SIGHUP stops the decoder, keeps the rows, marks the run interrupted and exits 130.",
     )
     parser.add_argument("--machine-id", required=True, metavar="ID", help="owner-chosen machine name, for example m2max-01")
     parser.add_argument("--resume", metavar="RUN_ID", help="continue this interrupted run")

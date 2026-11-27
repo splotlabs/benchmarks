@@ -19,6 +19,15 @@ from splotbench.util import BenchError
 from synthetic_campaign import HARNESS, make_lock, make_plan, write_corpus
 
 
+def make_repo_for_harness(directory: Path) -> Path:
+    directory.mkdir(parents=True)
+    git(directory, "init", "-q")
+    (directory / "bench").write_text("synthetic harness\n")
+    git(directory, "add", "-A")
+    git(directory, "commit", "-q", "-m", "synthetic harness")
+    return directory
+
+
 def setUpModule():
     isolate_git()
 
@@ -292,6 +301,20 @@ class SchemeAndLimitsTest(TempTest):
             plan.build_lock(path, harness=HARNESS)  # the repositories are file: URLs
         self.assertIn("repository", str(raised.exception))
         self.assertIn("https", str(raised.exception))
+
+    def test_standard_plan_needs_a_harness_commit_of_the_upstream(self):
+        directory = self.temporary / "c"
+        path = make_plan(directory, replace={'origin = "synthetic"': 'origin = "standard"', 'adapter = "fixture"': 'adapter = "splot"'})
+        for name in ("plan.toml", "corpus.toml"):  # https URLs that are never contacted: the check stops first
+            (directory / name).write_text((directory / name).read_text().replace("file://", "https://example.invalid"))
+        upstream = make_repo_for_harness(self.temporary / "synthetic-harness-upstream")
+        with mock.patch.object(plan.provenance, "HARNESS_REPOSITORY", upstream.as_uri()), \
+                mock.patch.object(plan.provenance, "resolve", side_effect=AssertionError("resolved a decoder")):
+            with self.assertRaisesRegex(BenchError, "a second host could not check out this harness"):
+                plan.build_lock(path, harness=HARNESS)  # HARNESS names a commit that the upstream lacks
+            dirty = HARNESS | {"dirty": True}
+            with self.assertRaisesRegex(BenchError, "not a clean Git commit"):
+                plan.build_lock(path, harness=dirty)
 
     def test_standard_manifest_refuses_file_urls_and_mirrors(self):
         make_plan(self.temporary / "c")

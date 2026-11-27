@@ -261,7 +261,8 @@ budget of the role:
 | `error` | any other failure: other nonzero exit code (also with complete, correct output), a signal, a descendant that keeps the output open, a help command that cannot run, or a decoder that cannot start |
 
 A zero exit code alone is never `ok`. The command prints one line per check and
-exits 1 when a check is not `ok`.
+exits 1 when a check is not `ok`. The last line counts the checks per outcome:
+`checks: <n> ok, <n> incorrect, <n> unsupported, <n> timeout, <n> error`.
 
 ## Host checks: `bench doctor`
 
@@ -278,8 +279,8 @@ which it holds) and stops at the first failure.
 | harness | | the checkout is not clean at `lock.harness` commit: results are `development`, no official run |
 | tools | | a build tool of a recipe is not on `PATH` (only `bench prepare` needs them) |
 | corpus | a stream is missing or has another size or SHA-256 (exit 3) | |
-| builds | a build is missing (exit 3) or its binary digest changed | |
-| correctness | | a cell has no correctness row for the current builds, or a row is not `ok` |
+| builds | a build is missing (exit 3) or its binary digest changed; on `ok`, one line per build follows: `  build <implementation> <commit> <release or development> <build_id> <binary sha256>` | |
+| correctness | | a cell has no correctness row for the current builds and this lock's reference, or a row is not `ok` |
 | disk | less than 1 GiB is free in `W` | |
 | cpus | | the logical CPUs are fewer than the largest thread budget |
 | host lock | another process holds `W/host.lock` | |
@@ -302,8 +303,11 @@ holds no host name, user name or path. Its digest is part of the run identity: a
 change of power source or governor makes a new fingerprint, so a run cannot resume.
 
 `W/host.lock` allows one harness invocation at a time: `bench run`, `bench prepare`
-and `bench verify` take it. It is an OS file lock that the kernel releases when
-the process ends. A second invocation exits 1 and names the process that holds it.
+and `bench verify` take it. It is an OS file lock (`flock`). `bench run` and
+`bench verify` pass its descriptor to every decoder, so the kernel releases it only
+when the harness and every decoder that holds it have ended. A second invocation
+exits 1 and names the holder: the harness process, or, when that process has
+ended, a decoder that it left running.
 
 ## Timed phase: `bench run`
 
@@ -314,7 +318,10 @@ one role on one host:
    a missing stream or build exits 3 and names `bench prepare`.
 2. Correctness pass: each cell without a correctness row for the current builds is
    checked with `verify.run` (see above). The run keeps one row per cell in
-   `correctness.jsonl`: the latest row of `W/verify/<build_id>.jsonl`.
+   `correctness.jsonl`: the latest row of `W/verify/<build_id>.jsonl` whose
+   `reference_sha256` and `reference_bytes` equal the case of this lock
+   (`verify.matches_case`). A row checked against another reference is never
+   reused, and `bench assemble` refuses a bundle with such a row.
 3. Check every binary digest against its build manifest again.
 4. Timed phase, one process at a time, in the order below. Only cells whose
    correctness outcome is `ok` get attempts; for every other cell the correctness
@@ -345,13 +352,19 @@ timed phase.
 
 The child runs in its own session and process group, with stdin from `/dev/null`
 and stdout and stderr to `logs/<sequence>-<implementation>-<case>-t<threads>.log`.
-The first log line is the exact command, with paths relative to `W` (the working
-directory of the child). The wall time is the monotonic clock from immediately
-before process creation to the return of `os.wait4`. It includes process start,
+The log is created exclusively, never truncated. Before the child starts, the
+harness writes and fsyncs two lines: the start record `# attempt <row>` (the row
+of this attempt with outcome `interrupted` and `null` metrics) and the exact
+command, with paths relative to `W` (the working directory of the child). The
+timeout timer starts before the clock. The wall time is the monotonic clock from
+immediately before process creation to the return of `os.wait4`. It includes process start,
 file read, demux, decode and film grain. CPU time (user + system) and peak RSS
 come from `os.wait4`; `ru_maxrss` is normalised to bytes (bytes on macOS, KiB on
-Linux). After the child exits, the harness kills its process group and waits until
-no member is left. Nothing polls the child during the attempt.
+Linux). After the child exits, the harness kills the members left in its process
+group (only when there are any) and waits until no member is left. Nothing polls
+the child during the attempt. Then each log is capped at 1 MiB: the head, one line
+`# harness: N bytes removed here; the log is capped at 1048576 bytes`, and the tail.
+Correctness logs get the same cap.
 
 Measured: `wall_time`, `cpu_time`, `peak_rss` of the decoder process. Not measured:
 `first_frame_latency` is always `null`; the thread count that a decoder really
@@ -363,7 +376,7 @@ starts is not observed (the row records the requested threads).
 | --- | --- | --- |
 | `ok` | exit code 0, and the reported frame count is `null` or equal to the lock | measured |
 | `incorrect` | exit code 0, but the decoder reports another frame count than the lock | measured |
-| `error` | nonzero exit code, a signal, or the decoder cannot start | measured (`null` when it did not start) |
+| `error` | nonzero exit code, a signal, the decoder cannot start, or a decoder whose timed mode always prints a frame count (`TIMED_REPORTS_FRAMES`: avmdec) printed none; the log ends with a `# harness:` line that says why | measured (`null` when it did not start) |
 | `timeout` | no exit within `timeout_s`: terminate the group, wait 2 s, kill the group, reap | `null` |
 | `interrupted` | SIGINT or SIGTERM during the attempt: the same stop sequence | `null` |
 
@@ -377,10 +390,22 @@ dropped, and the runner never repeats an attempt because it is slow.
 
 ### Interruption and resume
 
-SIGINT or SIGTERM stops the child group, appends the attempt with outcome
+SIGINT, SIGTERM or SIGHUP stops the child group, appends the attempt with outcome
 `interrupted`, writes state `interrupted`, releases the host lock and exits 130.
-During the correctness pass the current check stops at once and its process group is killed. A crash
-leaves state `in-progress`; resume treats it as interrupted.
+During the correctness pass the current check stops at once and its process group
+is killed. Elsewhere the signal takes effect at the next safe point: the run
+directory is created under a temporary name and renamed when complete, and a row or
+state file is never half written. The message says how many correctness and
+attempt rows the run holds; before the run directory exists it says that no run
+directory was created and no decoder was started.
+
+A crash of the harness leaves state `in-progress`; resume treats it as interrupted.
+A decoder that runs on keeps the host lock until it ends. At resume, every attempt
+with a start record in its log but no row gets that recorded row (`interrupted`,
+`null` metrics), and the next attempt takes the next free sequence number: a
+sequence number or a log is never used twice. A last line of `attempts.jsonl` or
+`correctness.jsonl` without its newline is not a row: resume moves it to
+`logs/<file>-partial-<n>.txt`, says so and continues.
 
 `--resume RUN_ID` continues under the same run id only when the lock digest, the
 role, the machine id, the fingerprint digest, the harness identity, the build ids

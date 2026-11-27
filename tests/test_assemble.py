@@ -310,6 +310,12 @@ class CompatibilityTest(Base):
 
         self.assertRejected(self.run_bundle(edit=edit), text="without a correctness row with outcome ok")
 
+    def test_correctness_row_of_another_reference(self):
+        def edit(documents):
+            documents["correctness"][0]["workload"]["reference_sha256"] = "sha256:" + "9" * 64
+
+        self.assertRejected(self.run_bundle(edit=edit), text=f"case {C8} was checked against another reference")
+
     def test_corrupt_bundle_is_rejected_by_the_bundle_checks(self):
         bundle = self.arm()
         data = bytearray(bundle.read_bytes())

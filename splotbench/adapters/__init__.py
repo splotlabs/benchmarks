@@ -8,6 +8,7 @@ verify_command(binary, input, threads)  argv of the correctness pass: raw output
 timed_command(binary, input, threads)   argv of the timed run: decode, film grain, discard each picture
 version(binary)          raw version text; never release proof
 parse_frames(stderr)     frame count that the decode prints, or None
+TIMED_REPORTS_FRAMES     True when the timed command always prints a frame count; its absence is an error
 unsupported(stderr)      True when the decoder says it cannot decode the stream or an option
 """
 

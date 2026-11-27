@@ -56,6 +56,10 @@ def version(binary: Path) -> str | None:
     return output_of([str(binary), "--version"]).strip() or None
 
 
+# The timed command prints no frame counter (-q suppresses every status line).
+TIMED_REPORTS_FRAMES = False
+
+
 def parse_frames(stderr: str) -> int | None:
     return None  # `-q` turns the frame counter off.
 
