@@ -13,6 +13,7 @@ from pathlib import Path
 from . import bundle, schema
 from .util import EXIT_FAILURE
 
+MAX_PUBLISHED_FILE_BYTES = 50 * 1024 * 1024  # a file in Git; the hosting limit is 100 MB
 DATASET_DOCUMENTS = {
     "manifest.json": ("object", "splotbench.dataset/1"),
     "summary.json": ("object", "splotbench.summary/1"),
@@ -89,8 +90,58 @@ def dataset_problems(directory: Path) -> list[str]:
     return problems
 
 
+def published_problems(directory: Path) -> list[str]:
+    """Check a published directory: index.json, its dataset directories and the size limit."""
+    from . import assemble  # assemble imports this module
+
+    problems = []
+    for path in sorted(directory.rglob("*")):
+        if path.is_file() and path.stat().st_size > MAX_PUBLISHED_FILE_BYTES:
+            problems.append(f"{path.relative_to(directory).as_posix()}: above {MAX_PUBLISHED_FILE_BYTES} bytes (50 MiB)")
+    problems += [
+        f"{path.name}: unexpected entry. Only index.json, README.md and datasets/ belong here."
+        for path in sorted(directory.iterdir())
+        if path.name not in ("index.json", "README.md", "datasets")
+    ]
+    index_path = directory / "index.json"
+    if not index_path.is_file():
+        return problems + ["missing index.json"]
+    found = bundle.document_problems("index.json", index_path.read_bytes(), ("object", "splotbench.index/1"))
+    if found:
+        return problems + [f"index.json: {problem}" for problem in found]
+    index = schema.loads(index_path.read_bytes())
+    listed = {}
+    for entry in index["datasets"]:
+        if entry["dataset_id"] in listed:
+            problems.append(f"index.json: {entry['dataset_id']} is listed twice")
+        listed[entry["dataset_id"]] = entry
+    datasets = directory / "datasets"
+    present = sorted(p.name for p in datasets.iterdir()) if datasets.is_dir() else []
+    problems += [f"datasets/{name}: not listed in index.json" for name in present if name not in listed]
+    for dataset_id, entry in listed.items():
+        where = f"datasets/{dataset_id}"
+        if not (datasets / dataset_id).is_dir():
+            problems.append(f"{where}: listed in index.json but missing")
+            continue
+        found = dataset_problems(datasets / dataset_id)
+        problems += [f"{where}: {problem}" for problem in found]
+        if found:
+            continue
+        manifest = schema.loads((datasets / dataset_id / "manifest.json").read_bytes())
+        summary = schema.loads((datasets / dataset_id / "summary.json").read_bytes())
+        if manifest["dataset_id"] != dataset_id:
+            problems.append(f"{where}: the manifest has dataset_id {manifest['dataset_id']}")
+        if manifest["origin"] == "synthetic":
+            problems.append(f"{where}: synthetic test data is never published")
+        if {k: v for k, v in entry.items() if k != "published_utc"} != assemble.index_entry(summary):
+            problems.append(f"index.json: the entry of {dataset_id} differs from its summary.json")
+    return problems
+
+
 def problems_for(path: Path) -> list[str]:
     if path.is_dir():
+        if not (path / "manifest.json").exists() and not (path / bundle.CHECKSUMS).exists():
+            return published_problems(path)
         return dataset_problems(path)
     if path.name.endswith(".tar.gz"):
         return bundle.check_bundle(path)
@@ -121,7 +172,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "validate",
         help="validate data files, bundles and dataset directories",
         description="Validate each PATH by its schema field: a .json file (lock, manifest, summary, index, "
-        "or an array of manifests), a .jsonl row file, a .tar.gz bundle or a dataset directory. "
+        "or an array of manifests), a .jsonl row file, a .tar.gz bundle, a dataset directory or a published directory (index.json and datasets/). "
         "Exit 1 when any PATH is invalid; each problem is one line on stderr.",
     )
     parser.add_argument("paths", nargs="+", type=Path, metavar="PATH")

@@ -1,113 +1,98 @@
 # Publishing a dataset
 
-`bench publish` copies one assembled dataset to S3-compatible storage. The intended
-target is Cloudflare R2. Nothing publishes automatically: no CI job, schedule, run or
-assemble step calls it. The owner starts it by hand.
+Published data lives in this repository, in `published/` on `main`. The owner decided
+that no object storage is used. A publication is a normal pull request that adds files
+under `published/`. Nothing publishes automatically: no CI job, schedule, run or assemble
+step calls `bench publish`, and the command never runs Git.
 
-## What the owner creates first
-
-This repository creates none of these. Use placeholders in angle brackets below; do not
-commit real values.
-
-1. An R2 bucket: `<bucket>`.
-2. An R2 API token with object read and write permission on `<bucket>` only. R2 shows
-   the token as an access key id and a secret access key.
-3. A public custom domain for the bucket: `<data domain>`. Do not use the `r2.dev` URL
-   for production; it is rate limited and has no cache control of its own.
-4. A CORS rule on the bucket: allow method `GET` from the website origin
-   `<website origin>`, and no other origin.
-
-The S3 endpoint is `https://<account id>.r2.cloudflarestorage.com`. The region is `auto`
-(the publisher fixes it). The publisher uses path-style requests: `<endpoint>/<bucket>/<key>`.
-
-## Environment
-
-The publisher reads the environment only. It never prints, records or writes a secret.
-
-| Variable | Meaning |
-| --- | --- |
-| `SPLOTBENCH_S3_ENDPOINT` | `https://<account id>.r2.cloudflarestorage.com`. Only `https:` is accepted (and `http://127.0.0.1` or `http://localhost` for tests). No path. |
-| `SPLOTBENCH_S3_BUCKET` | `<bucket>` |
-| `SPLOTBENCH_PUBLIC_BASE_URL` | The public URL that serves `index.json`: `https://<data domain>` when there is no prefix, `https://<data domain>/<prefix>` when there is one. |
-| `SPLOTBENCH_S3_PREFIX` | Optional key prefix, for example `benchmarks`. Letters, digits, `.`, `_`, `-` and inner `/`. |
-| `AWS_ACCESS_KEY_ID` | The token's access key id. |
-| `AWS_SECRET_ACCESS_KEY` | The token's secret. |
-
-A missing required variable is exit 3 with the names, before any request. A dry run needs
-none of them.
+```
+published/index.json                    schema splotbench.index/1: dataset entries and latest_complete
+published/datasets/<dataset_id>/        one dataset, exactly as `bench assemble` wrote it
+published/README.md
+```
 
 ## Procedure
 
-Assemble first (`bench assemble ... --official -o OUT`), then:
+Assemble first (`bench assemble ... --official -o OUT`). Then, in a checkout of this
+repository:
 
 ```sh
-./bench publish OUT/datasets/<dataset_id> --dry-run   # check and report
-./bench publish OUT/datasets/<dataset_id>             # upload and list the dataset
-./bench publish OUT/datasets/<dataset_id> --promote   # also make it latest_complete
+./bench publish OUT/datasets/<dataset_id> --dry-run   # check and report; writes nothing
+./bench publish OUT/datasets/<dataset_id>             # copy the dataset and list it in the index
+git switch -c publish/<dataset_id>
+git diff --stat                                       # review: new files only, plus index.json
+git add published
+git commit -m "data: publish <dataset_id>"
+# push the branch and open a pull request against main
 ```
 
-**Dry run.** It validates the directory (as `bench validate`), then lists every object
-key, size, SHA-256, content type and cache header, the destination, the origin and
-completeness, and the exact index change: entry added or unchanged, and `latest_complete`
-before and after. When the endpoint, bucket and credentials are set it also reads the remote
-state (only GET requests). It sends no write request.
+To make the dataset the default, add `--promote` to the publish command. A dataset that
+is published without `--promote` is listed but is not `latest_complete`. Publishing an
+older dataset later never changes the default. You can run the command again with
+`--promote` for a dataset that is already listed; it then changes only `latest_complete`.
 
-**Refused before any request.** A dataset that fails validation. Origin `synthetic`, always.
-Origin `local`, unless `--allow-local` (for a personal bucket). An incomplete dataset.
-`--promote` for a dataset that is not official (`latest_complete` names the latest complete
-official dataset).
+`--to DIR` sets another target directory. The default is `published/` of the harness
+checkout. The command changes files inside the target directory only.
 
-**Publish.** Order:
+### What the command checks
 
-1. Each file goes to `<prefix>/datasets/<dataset_id>/<path>` with `If-None-Match: *`
-   (the bundles first, `manifest.json` and `SHA256SUMS` last). An object that already
-   exists is read and compared by the SHA-256 of its bytes: equal is "already present",
-   different is a collision and the run stops (exit 1). An ETag is never used as a content
-   hash.
-2. Every object written by this run is read back and its SHA-256 is compared with the
-   local file.
-3. Only then `<prefix>/index.json` is read with its ETag (absent is allowed), the dataset
-   entry is added (all existing entries stay), `latest_complete` is set only with
-   `--promote`, and the file is written with `If-Match: <etag>` (`If-None-Match: *` when
-   it did not exist).
+The dry run and the real run start with the same checks, before any write:
 
-A failure before step 3 leaves the index and the default unchanged. Publishing the same
-dataset again with identical content writes nothing. An index entry with the same id and
-different content is refused. A lock file `<dataset directory parent>/.publish.lock`
-serialises publications from one machine.
+- The directory passes the rules of `bench validate`, and every file matches `SHA256SUMS`.
+- Origin `official` and `complete`. Origin `synthetic` is always refused. Origin `local` is
+  refused unless `--allow-local` is set, and then only into a folder other than the default
+  `published/` directory (for a personal fork or folder). `--promote` needs `official`.
+- No file is larger than 50 MiB (the hosting limit for one file in Git is 100 MB). The
+  message names the file.
+- An index entry with the same id and different content is refused.
+- An existing dataset directory with different bytes is refused; the message names the
+  first file that differs. With identical bytes it is "already present".
 
-Publishing an older dataset later does not change the default; use `--promote`.
+### What the command does
 
-## Content types and cache
+1. Copy the files into a temporary directory next to the target directory, check the copy
+   against `SHA256SUMS`, and move it to `datasets/<dataset_id>/` with one rename.
+2. Only then write `index.json` atomically: all existing entries stay, the new entry is
+   added with `published_utc`, and `latest_complete` changes only with `--promote`.
 
-| Object | Content-Type | Cache-Control |
-| --- | --- | --- |
-| `*.json` | `application/json` | dataset files: `public, max-age=31536000, immutable` |
-| `summary.csv` | `text/csv; charset=utf-8` | same |
-| `bundles/*.tar.gz` | `application/gzip` | same |
-| `SHA256SUMS` | `text/plain; charset=utf-8` | same |
-| `index.json` | `application/json` | `public, max-age=60, must-revalidate` |
+A failure before step 2 leaves the index and `latest_complete` unchanged and leaves no
+partial dataset directory. Running the same command again after success changes nothing
+(the first `published_utc` stays). One publication at a time can run into a target: the
+command holds a lock on the target directory.
 
-Dataset files never change, so caches keep them for a year. `index.json` changes with each
-publication, so browsers and the CDN revalidate it after 60 seconds. If the custom domain
-sits behind a Cloudflare cache rule, make sure the rule respects origin `Cache-Control`.
+## Checks in CI
+
+CI runs `./bench validate published` and, on pull requests, fails when the pull request
+changes, renames or deletes a file of an existing `published/datasets/<id>/` directory, or
+adds files to one. New dataset directories and changes to `published/index.json` are
+allowed. These checks look at committed files only.
+
+`bench validate published` checks that the index is valid, that every listed dataset
+directory exists and is valid, that every dataset directory is listed, that
+`latest_complete` is null or names a listed complete official dataset, that no dataset is
+synthetic, and that no file is above the size limit.
+
+## How the website reads the data
+
+The raw file URL form is
+`https://raw.githubusercontent.com/splotlabs/benchmarks/main/published/`, followed by
+`index.json` or `datasets/<dataset_id>/summary.json`. All paths inside the files are
+relative to the file that holds them.
+
+Observed on 2026-11-27 for a file of this repository (this is not a guarantee of GitHub):
+`Cache-Control: max-age=300`, `Access-Control-Allow-Origin: *` and
+`Content-Type: text/plain; charset=utf-8`. So a merged publication can take about five
+minutes to show, and a reader must parse the body as JSON whatever the content type says.
+Check the headers again before the website depends on them.
 
 ## Recovery
 
-- **Interrupted upload** (network error, HTTP error, Ctrl-C): the index was not changed.
-  Run the same command again. Objects already stored are compared and skipped.
-- **Read-back mismatch**: the index was not changed. Check the bucket, then run again. A
-  bad object that differs from the local file stops every later run as a collision; delete
-  that one object in the R2 dashboard (an owner action) and run again.
-- **Collision** (an object exists with different bytes): the data in the bucket is not
-  this dataset. Do not overwrite. Find out why; assemble again for a new dataset id.
-- **Index conflict** (HTTP 412 on `index.json`): another publication changed it. The dataset
-  files are complete. Run the same command again; it reads the new index and keeps the
-  other entry.
-- **Wrong default**: run `bench publish <dir> --promote` for the right dataset.
-
-## Limits
-
-One PutObject per file, no multipart upload. A file above 256 MiB is refused. There is one
-retry after a connection error and no other retry. Only the S3 API of one endpoint is
-supported; there is no other provider.
+- **Interrupted copy** (disk full, Ctrl-C): no dataset directory and no index change remain
+  (a temporary `.<dataset_id>.tmp` directory may remain after a hard kill; delete it and
+  run again). Run the same command again.
+- **Wrong dataset, pull request not merged**: delete that dataset directory from the
+  branch, restore `published/index.json` from `main` (`git checkout origin/main --
+  published/index.json`), and push. CI allows this only while the directory is new.
+- **After a merge**: the dataset stays. A correction is a new dataset: assemble again,
+  publish it, and promote it if it is the right default.
+- **Wrong default**: publish with `--promote` for the right dataset, through a pull request.

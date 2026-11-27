@@ -22,7 +22,29 @@ jobs:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
       - run: python -m unittest discover -s tests -v
+      - run: ./bench validate published
+      - name: Published datasets never change
+        if: github.event_name == 'pull_request'
+        run: |
+          # Only added files in new dataset directories are allowed; published/index.json may change.
+          git diff --name-status "origin/${{ github.base_ref }}...HEAD" -- published/datasets > changes.txt
+          cat changes.txt
+          bad=$(grep -v '^A' changes.txt || true)
+          if [ -n "$bad" ]; then
+            echo "A published dataset file was changed, renamed or deleted:"
+            echo "$bad"
+            exit 1
+          fi
+          git ls-tree -r --name-only "origin/${{ github.base_ref }}" -- published/datasets | cut -d/ -f1-3 | sort -u > old.txt
+          git diff --name-only --diff-filter=A "origin/${{ github.base_ref }}...HEAD" -- published/datasets | cut -d/ -f1-3 | sort -u > touched.txt
+          clash=$(comm -12 old.txt touched.txt)
+          if [ -n "$clash" ]; then
+            echo "Files were added to an existing published dataset directory:"
+            echo "$clash"
+            exit 1
+          fi

@@ -19,3 +19,5 @@ __pycache__/
 /bundles/
 /datasets/
 *.tar.gz
+# ...except the bundles of published datasets
+!/published/datasets/*/bundles/*.tar.gz
