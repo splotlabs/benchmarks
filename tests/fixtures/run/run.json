@@ -1,0 +1,23 @@
+{
+  "schema": "splotbench.run/1",
+  "run_id": "arm64-20260101T000000Z-0f1e2d3c",
+  "campaign_id": "fixture-decode-b26a85620211",
+  "lock_digest": "sha256:b26a85620211f8f5490bc91f3d633122523a8d98f225e265379f7d588333b4f1",
+  "role": "arm64",
+  "machine_id": "fixture-arm64",
+  "state": "complete",
+  "class": "synthetic",
+  "harness": {
+    "repository": "https://github.com/splotlabs/benchmarks",
+    "commit": "91f810d94fe5ef6e6444b66395b7a3ff123b3c7a",
+    "snapshot_sha256": "sha256:c114b68c2cdae4edbb5fa31f916fc1f542482965001d390ae3f489fb81caec99",
+    "class": "development"
+  },
+  "fingerprint_digest": "sha256:b13bd6d570a6f42935c37e1d699c8c2c6180f71eae2bbb0d3050f9e1a9df120c",
+  "build_ids": [
+    "bld-c6742bbc0ce4f3ed",
+    "bld-049f9d8b2d320c8e"
+  ],
+  "started_utc": "2026-01-01T00:00:00Z",
+  "finished_utc": "2026-01-01T00:10:00Z"
+}

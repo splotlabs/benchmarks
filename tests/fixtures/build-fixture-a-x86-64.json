@@ -1,0 +1,51 @@
+{
+  "schema": "splotbench.build/1",
+  "build_id": "bld-9b692185143d77b6",
+  "implementation": "fixture-a",
+  "class": "synthetic",
+  "source": {
+    "repository": "https://example.invalid/synthetic/fixture-a.git",
+    "commit": "93278947f02658f2a2fb6cd124d453edaf9928c3",
+    "identity": "release",
+    "release": {
+      "tag": "v1.0.0",
+      "version": "1.0.0",
+      "url": "https://example.invalid/synthetic/fixture-a/releases/v1.0.0"
+    },
+    "build_origin": "source-release",
+    "snapshot": {
+      "vcs": "git",
+      "commit": "93278947f02658f2a2fb6cd124d453edaf9928c3",
+      "tree": "ffe6bb1feae13ccaa965c58d1f9efbe40b0558b4",
+      "dirty": false,
+      "snapshot_sha256": "sha256:2d2f10866afccfd6fe6cfe6a51ffa50dfaf23af1d05c73e3100b6d2004feb104",
+      "submodules": []
+    },
+    "lockfiles": [
+      {
+        "path": "Cargo.lock",
+        "sha256": "sha256:9ad29311b6d8d9c6fa7659ff2c843bd8b960d7f52b4d24aa6837e46e5ff2a727"
+      }
+    ]
+  },
+  "binary_path": "build/fixture-a/93278947f02658f2a2fb6cd124d453edaf9928c3/fixture-a",
+  "binary_sha256": "sha256:69307a085edc494c6a4783f0e360f86280b472472b9888bf36ff177625d62445",
+  "libraries": [],
+  "version_output": "fixture-a 1.0.0 (synthetic)",
+  "target": "x86_64-unknown-linux-gnu",
+  "toolchain": {
+    "cc": "fixture-cc 1.0 (synthetic)"
+  },
+  "configuration": {
+    "summary": "synthetic fixture build",
+    "arguments": [
+      "fixture-build",
+      "--release"
+    ],
+    "target_cpu": "x86-64-v3",
+    "simd": "on",
+    "lto": "off",
+    "pgo": false
+  },
+  "environment": {}
+}

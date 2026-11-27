@@ -1,0 +1,27 @@
+{
+  "schema": "splotbench.host/1",
+  "machine_id": "fixture-arm64",
+  "fingerprint_digest": "sha256:b13bd6d570a6f42935c37e1d699c8c2c6180f71eae2bbb0d3050f9e1a9df120c",
+  "fingerprint": {
+    "arch": "aarch64",
+    "os": {
+      "name": "FixtureOS",
+      "version": "1.0",
+      "kernel": "fixture-kernel 1.0"
+    },
+    "cpu": {
+      "model": "Fixture CPU (synthetic)",
+      "physical_cores": 4,
+      "logical_cores": 4,
+      "performance_cores": null,
+      "efficiency_cores": null,
+      "isa": [
+        "neon"
+      ]
+    },
+    "memory_bytes": 8589934592,
+    "python": "3.11.0",
+    "power": null,
+    "affinity": null
+  }
+}

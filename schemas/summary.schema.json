@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "splotbench.summary/1",
+  "title": "Dataset summary (summary.json): everything the website shows",
+  "description": "Self-contained and derived from raw rows. A value that was not measured or is not known is null. Only ok cells have numbers. Paths are relative to this file.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "dataset_id", "campaign_id", "name", "lock_digest", "origin", "complete", "workload", "methodology", "aggregation", "corpus", "suite", "metrics", "machines", "implementations", "builds", "cases", "cells", "speedups", "aggregates", "downloads", "reproduce"],
+  "properties": {
+    "schema": { "const": "splotbench.summary/1" },
+    "dataset_id": { "$ref": "common.schema.json#/$defs/dataset_id" },
+    "campaign_id": { "$ref": "common.schema.json#/$defs/campaign_id" },
+    "name": { "$ref": "common.schema.json#/$defs/name" },
+    "lock_digest": { "$ref": "common.schema.json#/$defs/digest" },
+    "origin": { "$ref": "common.schema.json#/$defs/origin" },
+    "complete": { "type": "boolean" },
+    "workload": { "$ref": "common.schema.json#/$defs/workload_decode_kind" },
+    "methodology": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "timing_boundary", "film_grain", "output_policy", "frame_delay", "warmups", "repetitions", "timeout_s", "noise_max_range_permille", "build_policy"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/methodology" },
+        "timing_boundary": { "const": "process-wall" },
+        "film_grain": { "const": "apply" },
+        "output_policy": { "const": "raw-discard" },
+        "frame_delay": { "const": "decoder-default" },
+        "warmups": { "type": "integer", "minimum": 0 },
+        "repetitions": { "type": "integer", "minimum": 1 },
+        "timeout_s": { "type": "integer", "minimum": 1 },
+        "noise_max_range_permille": { "type": "integer", "minimum": 0 },
+        "build_policy": { "$ref": "common.schema.json#/$defs/build_policy" }
+      }
+    },
+    "aggregation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "harness"],
+      "properties": {
+        "version": { "enum": ["summary/1"] },
+        "harness": { "$ref": "common.schema.json#/$defs/harness" }
+      }
+    },
+    "corpus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "digest", "source", "oracle"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/name" },
+        "digest": { "$ref": "common.schema.json#/$defs/digest" },
+        "source": { "$ref": "common.schema.json#/$defs/url" },
+        "oracle": { "type": "string" }
+      }
+    },
+    "suite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "cases_expected"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/suite_id" },
+        "cases_expected": { "$ref": "common.schema.json#/$defs/count" }
+      }
+    },
+    "metrics": { "$ref": "common.schema.json#/$defs/metric_dictionary" },
+    "machines": { "type": "array", "items": { "$ref": "#/$defs/machine" } },
+    "implementations": { "type": "array", "items": { "$ref": "#/$defs/implementation" } },
+    "builds": { "type": "array", "items": { "$ref": "#/$defs/build" } },
+    "cases": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/case" } },
+    "cells": { "type": "array", "items": { "$ref": "#/$defs/cell" } },
+    "speedups": { "type": "array", "items": { "$ref": "#/$defs/speedup" } },
+    "aggregates": { "type": "array", "items": { "$ref": "#/$defs/aggregate" } },
+    "downloads": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest", "csv", "lock", "checksums"],
+      "properties": {
+        "manifest": { "$ref": "common.schema.json#/$defs/relative_path" },
+        "csv": { "$ref": "common.schema.json#/$defs/relative_path" },
+        "lock": { "$ref": "common.schema.json#/$defs/relative_path" },
+        "checksums": { "$ref": "common.schema.json#/$defs/relative_path" }
+      }
+    },
+    "reproduce": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "harness_commit", "instructions"],
+      "properties": {
+        "repository": { "$ref": "common.schema.json#/$defs/url" },
+        "harness_commit": { "$ref": "common.schema.json#/$defs/commit" },
+        "instructions": { "$ref": "common.schema.json#/$defs/url" }
+      }
+    }
+  },
+  "$defs": {
+    "number_or_null": { "type": ["number", "null"], "minimum": 0 },
+    "machine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["machine_id", "role", "series_id", "run_id", "run_state", "class", "threads", "measured_utc", "fingerprint_digest", "fingerprint", "bundle"],
+      "properties": {
+        "machine_id": { "$ref": "common.schema.json#/$defs/machine_id" },
+        "role": { "$ref": "common.schema.json#/$defs/role" },
+        "series_id": { "$ref": "common.schema.json#/$defs/series_id" },
+        "run_id": { "$ref": "common.schema.json#/$defs/run_id" },
+        "run_state": { "$ref": "common.schema.json#/$defs/run_state" },
+        "class": { "$ref": "common.schema.json#/$defs/class" },
+        "threads": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/threads" } },
+        "measured_utc": { "$ref": "common.schema.json#/$defs/utc_range" },
+        "fingerprint_digest": { "$ref": "common.schema.json#/$defs/digest" },
+        "fingerprint": { "$ref": "common.schema.json#/$defs/fingerprint" },
+        "bundle": { "$ref": "common.schema.json#/$defs/sized_file" }
+      }
+    },
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "repository", "commit", "identity", "release", "build_origin", "snapshot_sha256"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/implementation_id" },
+        "name": { "type": "string" },
+        "repository": { "$ref": "common.schema.json#/$defs/url" },
+        "commit": { "$ref": "common.schema.json#/$defs/commit" },
+        "identity": { "$ref": "common.schema.json#/$defs/identity" },
+        "release": { "$ref": "common.schema.json#/$defs/release_or_null" },
+        "build_origin": { "$ref": "common.schema.json#/$defs/build_origin" },
+        "snapshot_sha256": { "$ref": "common.schema.json#/$defs/digest" }
+      }
+    },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["build_id", "implementation", "machine_id", "class", "binary_sha256", "libraries", "version_output", "target", "toolchain", "configuration"],
+      "properties": {
+        "build_id": { "$ref": "common.schema.json#/$defs/build_id" },
+        "implementation": { "$ref": "common.schema.json#/$defs/implementation_id" },
+        "machine_id": { "$ref": "common.schema.json#/$defs/machine_id" },
+        "class": { "$ref": "common.schema.json#/$defs/class" },
+        "binary_sha256": { "$ref": "common.schema.json#/$defs/digest" },
+        "libraries": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/file_digest" } },
+        "version_output": { "type": ["string", "null"] },
+        "target": { "type": "string" },
+        "toolchain": { "$ref": "common.schema.json#/$defs/toolchain" },
+        "configuration": { "$ref": "common.schema.json#/$defs/build_configuration" }
+      }
+    },
+    "cell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["machine_id", "case_id", "threads", "implementation", "build_id", "status", "n_measured", "n_valid", "noisy", "frames", "wall_ns_median", "fps_median", "fps_min", "fps_max", "fps_mad", "cpu_ns_median", "peak_rss_bytes_median", "first_frame_latency_ns", "scaling_vs_1t"],
+      "properties": {
+        "machine_id": { "$ref": "common.schema.json#/$defs/machine_id" },
+        "case_id": { "$ref": "common.schema.json#/$defs/case_id" },
+        "threads": { "$ref": "common.schema.json#/$defs/threads" },
+        "implementation": { "$ref": "common.schema.json#/$defs/implementation_id" },
+        "build_id": { "type": ["string", "null"], "pattern": "^bld-[0-9a-f]{16}$" },
+        "status": { "enum": ["ok", "incorrect", "unsupported", "timeout", "error", "interrupted", "not-run"] },
+        "n_measured": { "$ref": "common.schema.json#/$defs/count" },
+        "n_valid": { "$ref": "common.schema.json#/$defs/count" },
+        "noisy": { "type": "boolean" },
+        "frames": { "$ref": "common.schema.json#/$defs/count_or_null" },
+        "wall_ns_median": { "$ref": "#/$defs/number_or_null" },
+        "fps_median": { "$ref": "#/$defs/number_or_null" },
+        "fps_min": { "$ref": "#/$defs/number_or_null" },
+        "fps_max": { "$ref": "#/$defs/number_or_null" },
+        "fps_mad": { "$ref": "#/$defs/number_or_null" },
+        "cpu_ns_median": { "$ref": "#/$defs/number_or_null" },
+        "peak_rss_bytes_median": { "$ref": "#/$defs/number_or_null" },
+        "first_frame_latency_ns": { "$ref": "#/$defs/number_or_null" },
+        "scaling_vs_1t": { "$ref": "#/$defs/number_or_null" }
+      }
+    },
+    "speedup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["machine_id", "case_id", "threads", "implementation", "baseline", "ratio"],
+      "properties": {
+        "machine_id": { "$ref": "common.schema.json#/$defs/machine_id" },
+        "case_id": { "$ref": "common.schema.json#/$defs/case_id" },
+        "threads": { "$ref": "common.schema.json#/$defs/threads" },
+        "implementation": { "$ref": "common.schema.json#/$defs/implementation_id" },
+        "baseline": { "$ref": "common.schema.json#/$defs/implementation_id" },
+        "ratio": { "type": "number", "minimum": 0 }
+      }
+    },
+    "aggregate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["machine_id", "threads", "bit_depth", "implementation", "baseline", "geomean_ratio", "n_matched", "n_expected", "excluded"],
+      "properties": {
+        "machine_id": { "$ref": "common.schema.json#/$defs/machine_id" },
+        "threads": { "$ref": "common.schema.json#/$defs/threads" },
+        "bit_depth": { "$ref": "common.schema.json#/$defs/bit_depth" },
+        "implementation": { "$ref": "common.schema.json#/$defs/implementation_id" },
+        "baseline": { "$ref": "common.schema.json#/$defs/implementation_id" },
+        "geomean_ratio": { "$ref": "#/$defs/number_or_null" },
+        "n_matched": { "$ref": "common.schema.json#/$defs/count" },
+        "n_expected": { "$ref": "common.schema.json#/$defs/count" },
+        "excluded": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["case_id", "reason"],
+            "properties": {
+              "case_id": { "$ref": "common.schema.json#/$defs/case_id" },
+              "reason": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

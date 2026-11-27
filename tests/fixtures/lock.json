@@ -1,0 +1,145 @@
+{
+  "schema": "splotbench.lock/1",
+  "lock_digest": "sha256:b26a85620211f8f5490bc91f3d633122523a8d98f225e265379f7d588333b4f1",
+  "lock": {
+    "name": "fixture-decode",
+    "origin": "synthetic",
+    "methodology": "decode-cli-wall/1",
+    "harness": {
+      "repository": "https://github.com/splotlabs/benchmarks",
+      "version": "0.1.0",
+      "snapshot": {
+        "vcs": "git",
+        "commit": "91f810d94fe5ef6e6444b66395b7a3ff123b3c7a",
+        "tree": "24e08cb8c365a5a4ecae949e79d8f60c1cf25ef3",
+        "dirty": false,
+        "snapshot_sha256": "sha256:c114b68c2cdae4edbb5fa31f916fc1f542482965001d390ae3f489fb81caec99",
+        "submodules": []
+      }
+    },
+    "build_policy": "optimized-source/1",
+    "implementations": [
+      {
+        "id": "fixture-a",
+        "name": "Fixture A",
+        "adapter": "fixture",
+        "repository": "https://example.invalid/synthetic/fixture-a.git",
+        "select": "v1.0.0",
+        "release_tag_pattern": "v(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)",
+        "release_url_template": "https://example.invalid/synthetic/fixture-a/releases/{tag}",
+        "commit": "93278947f02658f2a2fb6cd124d453edaf9928c3",
+        "identity": "release",
+        "release": {
+          "tag": "v1.0.0",
+          "version": "1.0.0",
+          "url": "https://example.invalid/synthetic/fixture-a/releases/v1.0.0"
+        }
+      },
+      {
+        "id": "fixture-b",
+        "name": "Fixture B",
+        "adapter": "fixture",
+        "repository": "https://example.invalid/synthetic/fixture-b.git",
+        "select": "main",
+        "release_tag_pattern": null,
+        "release_url_template": null,
+        "commit": "e45b897d529b9104ee70d1ee62f54f47ae9ccc04",
+        "identity": "development",
+        "release": null
+      }
+    ],
+    "corpus": {
+      "id": "fixture-corpus",
+      "digest": "sha256:1c0ca79d4efeac458a580bf59eb58b9422fde7550d5eb9c22f6bc4a70723b093",
+      "source": "https://example.invalid/synthetic/corpus",
+      "oracle": "fixture-oracle (synthetic), rawvideo SHA-256",
+      "imported_from": {
+        "repository": "https://example.invalid/synthetic/splot.git",
+        "commit": "19d538e64b694ef38bb9425d6aace34ffa1571a3",
+        "path": "tests/conformance/fixture-corpus.toml",
+        "sha256": "sha256:042168a7610a18cc6d0fcc4b110d85cb7f9ff1b5f0c44dbcf16541ced58ac118"
+      }
+    },
+    "suite": {
+      "id": "quick",
+      "cases": [
+        {
+          "id": "fixture-case-8bit",
+          "name": "fixture-case-8bit.obu",
+          "url": "https://example.invalid/synthetic/corpus/fixture-case-8bit.obu",
+          "input_sha256": "sha256:4a29f17d747983f2c7bced18d348a84c6b5c12d9d5025cdac237bfbd7765d87b",
+          "bytes": 512,
+          "width": 64,
+          "height": 64,
+          "bit_depth": 8,
+          "chroma": "4:2:0",
+          "frames": 2,
+          "film_grain": false,
+          "reference": {
+            "convention": "avmdec-rawvideo-sha256",
+            "sha256": "sha256:1edee93c043268456ffaf9ac62eda2198540f5d11fc8fb779d14ab77b42c1ece",
+            "raw_bytes": 12288
+          },
+          "source_note": "synthetic fixture, not a real stream",
+          "terms_note": null,
+          "workload": {
+            "kind": "decode"
+          }
+        },
+        {
+          "id": "fixture-case-10bit",
+          "name": "fixture-case-10bit.obu",
+          "url": "https://example.invalid/synthetic/corpus/fixture-case-10bit.obu",
+          "input_sha256": "sha256:a6c1104218428602b5c01a127b9bb973337c0520c443c1fd9d2f89931ae4bf30",
+          "bytes": 640,
+          "width": 64,
+          "height": 64,
+          "bit_depth": 10,
+          "chroma": "4:2:0",
+          "frames": 2,
+          "film_grain": null,
+          "reference": {
+            "convention": "avmdec-rawvideo-sha256",
+            "sha256": "sha256:ef3592ca839d6dfbc457be13e49c8584c15a5b6b33a58f0d2c1276f514479c48",
+            "raw_bytes": 24576
+          },
+          "source_note": "synthetic fixture, not a real stream",
+          "terms_note": null,
+          "workload": {
+            "kind": "decode"
+          }
+        }
+      ]
+    },
+    "roles": {
+      "arm64": {
+        "arch": "aarch64",
+        "threads": [
+          1,
+          2
+        ]
+      },
+      "x86-64": {
+        "arch": "x86_64",
+        "threads": [
+          1,
+          2
+        ]
+      }
+    },
+    "measurement": {
+      "warmups": 1,
+      "repetitions": 3,
+      "timeout_s": 60,
+      "order": {
+        "policy": "seeded-rotation/1",
+        "seed": 1
+      },
+      "noise_max_range_permille": 50,
+      "film_grain": "apply",
+      "output_policy": "raw-discard",
+      "frame_delay": "decoder-default",
+      "timing_boundary": "process-wall"
+    }
+  }
+}

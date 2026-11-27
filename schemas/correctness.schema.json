@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "splotbench.correctness/1",
+  "title": "Correctness row: one untimed check of a build, case and thread budget",
+  "description": "ok needs exit code 0, output bytes equal to the reference raw_bytes and an output digest equal to the reference sha256.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "build_id", "implementation", "case_id", "threads", "outcome", "exit_code", "detail", "workload"],
+  "properties": {
+    "schema": { "const": "splotbench.correctness/1" },
+    "build_id": { "$ref": "common.schema.json#/$defs/build_id" },
+    "implementation": { "$ref": "common.schema.json#/$defs/implementation_id" },
+    "case_id": { "$ref": "common.schema.json#/$defs/case_id" },
+    "threads": { "$ref": "common.schema.json#/$defs/threads" },
+    "outcome": { "enum": ["ok", "incorrect", "unsupported", "timeout", "error"] },
+    "exit_code": { "type": ["integer", "null"] },
+    "detail": { "description": "Short reason for an outcome other than ok.", "type": ["string", "null"] },
+    "workload": {
+      "type": "object",
+      "discriminator": {
+        "property": "kind",
+        "mapping": {
+          "decode": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "output_bytes", "output_sha256", "reference_bytes", "reference_sha256", "frames"],
+            "properties": {
+              "kind": { "const": "decode" },
+              "output_bytes": { "$ref": "common.schema.json#/$defs/count_or_null" },
+              "output_sha256": { "$ref": "common.schema.json#/$defs/digest_or_null" },
+              "reference_bytes": { "type": "integer", "minimum": 1 },
+              "reference_sha256": { "$ref": "common.schema.json#/$defs/digest" },
+              "frames": { "$ref": "common.schema.json#/$defs/count_or_null" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

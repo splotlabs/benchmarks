@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "splotbench.host/1",
+  "title": "Host manifest: owner-chosen machine id and observed fingerprint",
+  "description": "fingerprint_digest = sha256 of the canonical JSON of fingerprint. The machine id is chosen by the owner; the fingerprint is observed. They are separate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "machine_id", "fingerprint_digest", "fingerprint"],
+  "properties": {
+    "schema": { "const": "splotbench.host/1" },
+    "machine_id": { "$ref": "common.schema.json#/$defs/machine_id" },
+    "fingerprint_digest": { "$ref": "common.schema.json#/$defs/digest" },
+    "fingerprint": { "$ref": "common.schema.json#/$defs/fingerprint" }
+  }
+}

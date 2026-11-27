@@ -1,0 +1,55 @@
+{
+  "schema": "splotbench.dataset/1",
+  "dataset_id": "ds-f5f4f92afb47136f",
+  "campaign_id": "fixture-decode-b26a85620211",
+  "name": "fixture-decode",
+  "lock_digest": "sha256:b26a85620211f8f5490bc91f3d633122523a8d98f225e265379f7d588333b4f1",
+  "origin": "synthetic",
+  "complete": false,
+  "aggregation": {
+    "version": "summary/1",
+    "harness": {
+      "repository": "https://github.com/splotlabs/benchmarks",
+      "commit": "91f810d94fe5ef6e6444b66395b7a3ff123b3c7a",
+      "snapshot_sha256": "sha256:c114b68c2cdae4edbb5fa31f916fc1f542482965001d390ae3f489fb81caec99",
+      "class": "development"
+    }
+  },
+  "runs": [
+    {
+      "run_id": "arm64-20260101T000000Z-0f1e2d3c",
+      "role": "arm64",
+      "machine_id": "fixture-arm64",
+      "state": "complete",
+      "class": "synthetic",
+      "bundle": {
+        "path": "bundles/arm64-20260101T000000Z-0f1e2d3c.tar.gz",
+        "sha256": "sha256:10ed995f4341f8f8c631217c8b3babfe65458a64da010864e1148fab1d25f8fe",
+        "bytes": 1
+      }
+    }
+  ],
+  "coverage": {
+    "roles_expected": [
+      "arm64",
+      "x86-64"
+    ],
+    "roles_present": [
+      "arm64"
+    ],
+    "cells_expected": 16,
+    "cells_ok": 6
+  },
+  "files": [
+    {
+      "path": "lock.json",
+      "sha256": "sha256:a9c713cefb60a95eca9f4b247c3e653513f09f45d9b89d1fef3c5739dd4b0dc9",
+      "bytes": 1
+    },
+    {
+      "path": "bundles/arm64-20260101T000000Z-0f1e2d3c.tar.gz",
+      "sha256": "sha256:10ed995f4341f8f8c631217c8b3babfe65458a64da010864e1148fab1d25f8fe",
+      "bytes": 1
+    }
+  ]
+}

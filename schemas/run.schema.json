@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "splotbench.run/1",
+  "title": "Run manifest (run.json): one host run, and the manifest of its bundle",
+  "description": "A bundle holds run.json, lock.json, host.json, builds.json (an array of splotbench.build/1), attempts.jsonl, correctness.jsonl, optional logs/ and SHA256SUMS.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "run_id", "campaign_id", "lock_digest", "role", "machine_id", "state", "class", "harness", "fingerprint_digest", "build_ids", "started_utc", "finished_utc"],
+  "properties": {
+    "schema": { "const": "splotbench.run/1" },
+    "run_id": { "$ref": "common.schema.json#/$defs/run_id" },
+    "campaign_id": { "$ref": "common.schema.json#/$defs/campaign_id" },
+    "lock_digest": { "$ref": "common.schema.json#/$defs/digest" },
+    "role": { "$ref": "common.schema.json#/$defs/role" },
+    "machine_id": { "$ref": "common.schema.json#/$defs/machine_id" },
+    "state": { "$ref": "common.schema.json#/$defs/run_state" },
+    "class": { "$ref": "common.schema.json#/$defs/class" },
+    "harness": { "$ref": "common.schema.json#/$defs/harness" },
+    "fingerprint_digest": { "description": "Digest of the fingerprint in host.json.", "$ref": "common.schema.json#/$defs/digest" },
+    "build_ids": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/build_id" } },
+    "started_utc": { "$ref": "common.schema.json#/$defs/utc" },
+    "finished_utc": { "$ref": "common.schema.json#/$defs/utc_or_null" }
+  }
+}

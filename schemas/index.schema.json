@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "splotbench.index/1",
+  "title": "Discovery index (index.json at the data base URL)",
+  "description": "latest_complete is null when no complete official dataset is published. Paths are relative to this file.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "latest_complete", "datasets"],
+  "properties": {
+    "schema": { "const": "splotbench.index/1" },
+    "latest_complete": { "type": ["string", "null"], "pattern": "^ds-[0-9a-f]{16}$" },
+    "datasets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["dataset_id", "campaign_id", "name", "origin", "complete", "workload", "methodology", "suite", "measured_utc", "published_utc", "path", "series"],
+        "properties": {
+          "dataset_id": { "$ref": "common.schema.json#/$defs/dataset_id" },
+          "campaign_id": { "$ref": "common.schema.json#/$defs/campaign_id" },
+          "name": { "$ref": "common.schema.json#/$defs/name" },
+          "origin": { "$ref": "common.schema.json#/$defs/origin" },
+          "complete": { "type": "boolean" },
+          "workload": { "enum": ["decode"] },
+          "methodology": { "$ref": "common.schema.json#/$defs/methodology" },
+          "suite": { "$ref": "common.schema.json#/$defs/suite_id" },
+          "measured_utc": { "$ref": "common.schema.json#/$defs/utc_range" },
+          "published_utc": { "$ref": "common.schema.json#/$defs/utc" },
+          "path": { "$ref": "common.schema.json#/$defs/relative_path" },
+          "series": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["machine_id", "role", "series_id"],
+              "properties": {
+                "machine_id": { "$ref": "common.schema.json#/$defs/machine_id" },
+                "role": { "$ref": "common.schema.json#/$defs/role" },
+                "series_id": { "$ref": "common.schema.json#/$defs/series_id" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

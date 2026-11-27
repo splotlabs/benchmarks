@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "splotbench.dataset/1",
+  "title": "Dataset manifest (manifest.json): one assembled dataset directory",
+  "description": "dataset_id = 'ds-' + first 16 hex of sha256(canonical JSON of {lock_digest, sorted selected run ids with bundle digests, aggregation version, origin}). files lists every file of the directory except manifest.json and SHA256SUMS.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "dataset_id", "campaign_id", "name", "lock_digest", "origin", "complete", "aggregation", "runs", "coverage", "files"],
+  "properties": {
+    "schema": { "const": "splotbench.dataset/1" },
+    "dataset_id": { "$ref": "common.schema.json#/$defs/dataset_id" },
+    "campaign_id": { "$ref": "common.schema.json#/$defs/campaign_id" },
+    "name": { "$ref": "common.schema.json#/$defs/name" },
+    "lock_digest": { "$ref": "common.schema.json#/$defs/digest" },
+    "origin": { "$ref": "common.schema.json#/$defs/origin" },
+    "complete": { "type": "boolean" },
+    "aggregation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "harness"],
+      "properties": {
+        "version": { "enum": ["summary/1"] },
+        "harness": { "$ref": "common.schema.json#/$defs/harness" }
+      }
+    },
+    "runs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["run_id", "role", "machine_id", "state", "class", "bundle"],
+        "properties": {
+          "run_id": { "$ref": "common.schema.json#/$defs/run_id" },
+          "role": { "$ref": "common.schema.json#/$defs/role" },
+          "machine_id": { "$ref": "common.schema.json#/$defs/machine_id" },
+          "state": { "$ref": "common.schema.json#/$defs/run_state" },
+          "class": { "$ref": "common.schema.json#/$defs/class" },
+          "bundle": { "$ref": "common.schema.json#/$defs/sized_file" }
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["roles_expected", "roles_present", "cells_expected", "cells_ok"],
+      "properties": {
+        "roles_expected": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/role" } },
+        "roles_present": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/role" } },
+        "cells_expected": { "$ref": "common.schema.json#/$defs/count" },
+        "cells_ok": { "$ref": "common.schema.json#/$defs/count" }
+      }
+    },
+    "files": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/sized_file" } }
+  }
+}
