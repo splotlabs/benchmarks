@@ -1,0 +1,100 @@
+[
+  {
+    "schema": "splotbench.build/1",
+    "build_id": "bld-c6742bbc0ce4f3ed",
+    "implementation": "fixture-a",
+    "class": "synthetic",
+    "source": {
+      "repository": "https://example.invalid/synthetic/fixture-a.git",
+      "commit": "93278947f02658f2a2fb6cd124d453edaf9928c3",
+      "identity": "release",
+      "release": {
+        "tag": "v1.0.0",
+        "version": "1.0.0",
+        "url": "https://example.invalid/synthetic/fixture-a/releases/v1.0.0"
+      },
+      "build_origin": "source-release",
+      "snapshot": {
+        "vcs": "git",
+        "commit": "93278947f02658f2a2fb6cd124d453edaf9928c3",
+        "tree": "ffe6bb1feae13ccaa965c58d1f9efbe40b0558b4",
+        "dirty": false,
+        "snapshot_sha256": "sha256:2d2f10866afccfd6fe6cfe6a51ffa50dfaf23af1d05c73e3100b6d2004feb104",
+        "submodules": []
+      },
+      "lockfiles": [
+        {
+          "path": "Cargo.lock",
+          "sha256": "sha256:9ad29311b6d8d9c6fa7659ff2c843bd8b960d7f52b4d24aa6837e46e5ff2a727"
+        }
+      ]
+    },
+    "binary_path": "build/fixture-a/93278947f02658f2a2fb6cd124d453edaf9928c3/fixture-a",
+    "binary_sha256": "sha256:6f7e4cff76618872913deb456a8b21dcf9d872d28a31be38e6c7d5ab5dc8ee6f",
+    "libraries": [],
+    "version_output": "fixture-a 1.0.0 (synthetic)",
+    "target": "aarch64-apple-darwin",
+    "toolchain": {
+      "cc": "fixture-cc 1.0 (synthetic)"
+    },
+    "configuration": {
+      "summary": "synthetic fixture build",
+      "arguments": [
+        "fixture-build",
+        "--release"
+      ],
+      "target_cpu": "toolchain-default",
+      "simd": "on",
+      "lto": "off",
+      "pgo": false
+    },
+    "environment": {}
+  },
+  {
+    "schema": "splotbench.build/1",
+    "build_id": "bld-049f9d8b2d320c8e",
+    "implementation": "fixture-b",
+    "class": "synthetic",
+    "source": {
+      "repository": "https://example.invalid/synthetic/fixture-b.git",
+      "commit": "e45b897d529b9104ee70d1ee62f54f47ae9ccc04",
+      "identity": "development",
+      "release": null,
+      "build_origin": "source-development",
+      "snapshot": {
+        "vcs": "git",
+        "commit": "e45b897d529b9104ee70d1ee62f54f47ae9ccc04",
+        "tree": "6dad7598bf3f050da2df71464ea98f8f4603399e",
+        "dirty": false,
+        "snapshot_sha256": "sha256:8213716202ceb1a72e2ec46eb7b08ed046c6d2bedef614262e460c166ac63861",
+        "submodules": []
+      },
+      "lockfiles": [
+        {
+          "path": "Cargo.lock",
+          "sha256": "sha256:5ebb83c5addb296550b7b4f3505549868074a8fe402ed54a48a433ab33a2172a"
+        }
+      ]
+    },
+    "binary_path": "build/fixture-b/e45b897d529b9104ee70d1ee62f54f47ae9ccc04/fixture-b",
+    "binary_sha256": "sha256:9b50f3caeff2d4e246fe836c0a58165966b7f867cf2b849b2b245eec5b15f042",
+    "libraries": [],
+    "version_output": "fixture-b 1.0.0 (synthetic)",
+    "target": "aarch64-apple-darwin",
+    "toolchain": {
+      "cc": "fixture-cc 1.0 (synthetic)"
+    },
+    "configuration": {
+      "summary": "synthetic fixture build",
+      "arguments": [
+        "fixture-build",
+        "--release"
+      ],
+      "target_cpu": "toolchain-default",
+      "simd": "on",
+      "lto": "off",
+      "pgo": false
+    },
+    "environment": {}
+  }
+]

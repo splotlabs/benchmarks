@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "splotbench.attempt/1",
+  "title": "Attempt row: one raw timed process run",
+  "description": "Raw measurement only; summaries are derived. run_id resolves the campaign, machine and harness through run.json. A metric that the platform does not give is null, never 0.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "attempt_id", "run_id", "sequence", "implementation", "build_id", "case_id", "threads", "phase", "round", "started_utc", "outcome", "exit_code", "workload"],
+  "properties": {
+    "schema": { "const": "splotbench.attempt/1" },
+    "attempt_id": { "$ref": "common.schema.json#/$defs/attempt_id" },
+    "run_id": { "$ref": "common.schema.json#/$defs/run_id" },
+    "sequence": { "type": "integer", "minimum": 1 },
+    "implementation": { "$ref": "common.schema.json#/$defs/implementation_id" },
+    "build_id": { "$ref": "common.schema.json#/$defs/build_id" },
+    "case_id": { "$ref": "common.schema.json#/$defs/case_id" },
+    "threads": { "$ref": "common.schema.json#/$defs/threads" },
+    "phase": { "enum": ["warmup", "measure"] },
+    "round": { "type": "integer", "minimum": 1 },
+    "started_utc": { "$ref": "common.schema.json#/$defs/utc" },
+    "outcome": { "enum": ["ok", "incorrect", "timeout", "error", "interrupted"] },
+    "exit_code": { "type": ["integer", "null"] },
+    "workload": {
+      "type": "object",
+      "discriminator": {
+        "property": "kind",
+        "mapping": {
+          "decode": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "frames", "metrics"],
+            "properties": {
+              "kind": { "const": "decode" },
+              "frames": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["expected", "reported", "source"],
+                "properties": {
+                  "expected": { "type": "integer", "minimum": 1 },
+                  "reported": { "$ref": "common.schema.json#/$defs/count_or_null" },
+                  "source": { "description": "Which count the throughput uses.", "enum": ["lock", "decoder"] }
+                }
+              },
+              "metrics": {
+                "description": "Typed decode metrics. Names and units come from the metric dictionary.",
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["wall_time", "cpu_time", "peak_rss", "first_frame_latency"],
+                "properties": {
+                  "wall_time": { "$ref": "common.schema.json#/$defs/count_or_null" },
+                  "cpu_time": { "$ref": "common.schema.json#/$defs/count_or_null" },
+                  "peak_rss": { "$ref": "common.schema.json#/$defs/count_or_null" },
+                  "first_frame_latency": { "$ref": "common.schema.json#/$defs/count_or_null" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

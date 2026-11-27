@@ -1,0 +1,29 @@
+{
+  "schema": "splotbench.index/1",
+  "latest_complete": null,
+  "datasets": [
+    {
+      "dataset_id": "ds-f5f4f92afb47136f",
+      "campaign_id": "fixture-decode-b26a85620211",
+      "name": "fixture-decode",
+      "origin": "synthetic",
+      "complete": false,
+      "workload": "decode",
+      "methodology": "decode-cli-wall/1",
+      "suite": "quick",
+      "measured_utc": {
+        "first": "2026-01-01T00:01:00Z",
+        "last": "2026-01-01T00:04:00Z"
+      },
+      "published_utc": "2026-01-02T00:00:00Z",
+      "path": "datasets/ds-f5f4f92afb47136f/",
+      "series": [
+        {
+          "machine_id": "fixture-arm64",
+          "role": "arm64",
+          "series_id": "ser-b2d6a61449d10e45"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "splotbench.build/1",
+  "title": "Build manifest: one decoder build on one host",
+  "description": "build_id = 'bld-' + first 16 hex of sha256(canonical JSON of {implementation, commit, snapshot_sha256, configuration, binary_sha256, libraries: sorted library sha256 list}). Source traceability is not a promise of byte-identical compiler output: two builds of one source can have different binary digests and build ids.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "build_id", "implementation", "class", "source", "binary_path", "binary_sha256", "libraries", "version_output", "target", "toolchain", "configuration", "environment"],
+  "properties": {
+    "schema": { "const": "splotbench.build/1" },
+    "build_id": { "$ref": "common.schema.json#/$defs/build_id" },
+    "implementation": { "$ref": "common.schema.json#/$defs/implementation_id" },
+    "class": { "$ref": "common.schema.json#/$defs/class" },
+    "source": { "$ref": "common.schema.json#/$defs/source_provenance" },
+    "binary_path": {
+      "description": "The executable that the harness invokes, relative to the work directory.",
+      "$ref": "common.schema.json#/$defs/relative_path"
+    },
+    "binary_sha256": { "$ref": "common.schema.json#/$defs/digest" },
+    "libraries": {
+      "description": "Project-built dynamic decoder libraries, paths relative to the work directory.",
+      "type": "array",
+      "items": { "$ref": "common.schema.json#/$defs/file_digest" }
+    },
+    "version_output": {
+      "description": "Raw `--version` output. Never release proof and never a label.",
+      "type": ["string", "null"]
+    },
+    "target": { "type": "string" },
+    "toolchain": { "$ref": "common.schema.json#/$defs/toolchain" },
+    "configuration": { "$ref": "common.schema.json#/$defs/build_configuration" },
+    "environment": {
+      "description": "Only the allow-listed build variables that were set.",
+      "type": "object",
+      "propertyNames": { "enum": ["CC", "CXX", "CFLAGS", "CXXFLAGS", "LDFLAGS", "RUSTFLAGS", "CARGO_BUILD_TARGET", "MACOSX_DEPLOYMENT_TARGET"] },
+      "additionalProperties": { "type": "string" }
+    }
+  }
+}

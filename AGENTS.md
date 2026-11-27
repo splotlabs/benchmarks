@@ -31,6 +31,8 @@ These rules are canonical. `CLAUDE.md` points to this file.
 
 - JSON Schema files are the single source of truth for every data format.
   Do not write a second, hand-coded check for the same format.
+- Change a schema, its fixture in `tests/fixtures/` and `docs/FORMATS.md`
+  together. An incompatible change needs a new major schema version.
 - Digests are `sha256:<64 hex>` over canonical JSON (`util.canonical_json`).
   Digested objects contain no floats.
 - Never fabricate results or performance numbers. Fixtures are synthetic and

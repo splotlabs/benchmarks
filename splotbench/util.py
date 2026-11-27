@@ -89,8 +89,11 @@ def recorded_env(environ: Mapping[str, str] = os.environ) -> dict[str, str]:
     return {name: environ[name] for name in ENV_ALLOWLIST if name in environ}
 
 
-def run(args: Sequence[str], *, cwd: Path | None = None) -> subprocess.CompletedProcess[bytes]:
+def run(
+    args: Sequence[str], *, cwd: Path | None = None, extra_env: Mapping[str, str] | None = None
+) -> subprocess.CompletedProcess[bytes]:
     """Run a tool and capture its output as bytes. A missing tool is a missing prerequisite."""
     if shutil.which(args[0]) is None:
         raise BenchError(f"{args[0]} is not on PATH. Install it, then run the command again.", EXIT_PREREQUISITE)
-    return subprocess.run(list(args), cwd=cwd, capture_output=True, check=False)
+    env = {**os.environ, **extra_env} if extra_env else None
+    return subprocess.run(list(args), cwd=cwd, env=env, capture_output=True, check=False)

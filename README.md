@@ -30,7 +30,10 @@ Run the commands from the repository root.
 ./bench --help            # commands and exit codes
 ./bench --version         # harness version and commit
 ./bench identity          # harness identity as JSON: commit, tree, dirty flag, content digest
+./bench validate PATH...  # check JSON and JSONL files, bundles and dataset directories
 ```
+
+The data formats and identities are described in [docs/FORMATS.md](docs/FORMATS.md).
 
 Exit codes: 0 success, 1 the operation ran and the result is a failure,
 2 usage error, 3 missing prerequisite or configuration, 130 interrupted.
@@ -49,8 +52,10 @@ with Python 3.11 and 3.14.
 | Path | Contents |
 | --- | --- |
 | `bench` | Entry script. |
-| `splotbench/` | The harness package. `cli.py` registers one parser per command module. |
-| `tests/` | Unit tests. All test data is synthetic. |
+| `splotbench/` | The harness package. `cli.py` registers one parser per command module. `schema.py` validates, `provenance.py` records source, release and binary identity, `bundle.py` writes and reads bundles. |
+| `schemas/` | JSON Schema files: the source of truth for every data format. |
+| `docs/` | Format documentation. |
+| `tests/` | Unit tests and synthetic fixtures (`tests/fixtures/`). |
 | `.github/workflows/` | CI: unit tests only. No benchmark runs, schedules or publication. |
 
 Downloaded corpora, builds, raw runs, bundles and generated datasets do not go
@@ -59,6 +64,6 @@ into Git. `.gitignore` excludes them.
 ## Licence
 
 The first-party material is source-available under
-[PolyForm Noncommercial 1.0.0](LICENSE.md). It is not open source. Contributions are
-accepted under the
-[SplotLabs Contribution Terms](https://github.com/splotlabs/.github/blob/main/CONTRIBUTING.md).
+[PolyForm Noncommercial 1.0.0](LICENSE.md). It is not open source. The contribution
+policy of SplotLabs is in
+[splotlabs/.github CONTRIBUTING.md](https://github.com/splotlabs/.github/blob/main/CONTRIBUTING.md).

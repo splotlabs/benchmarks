@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "splotbench.lock/1",
+  "title": "Campaign lock: every execution-relevant value, resolved once",
+  "description": "lock_digest is the sha256 of the canonical JSON of the lock object. No floats, no absolute paths, no host names.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "lock_digest", "lock"],
+  "properties": {
+    "schema": { "const": "splotbench.lock/1" },
+    "lock_digest": { "$ref": "common.schema.json#/$defs/digest" },
+    "lock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "origin", "methodology", "harness", "build_policy", "implementations", "corpus", "suite", "roles", "measurement"],
+      "properties": {
+        "name": { "$ref": "common.schema.json#/$defs/name" },
+        "origin": { "enum": ["standard", "synthetic"] },
+        "methodology": { "$ref": "common.schema.json#/$defs/methodology" },
+        "harness": {
+          "description": "The harness at lock time. An official run needs this commit, clean.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["repository", "version", "snapshot"],
+          "properties": {
+            "repository": { "$ref": "common.schema.json#/$defs/url" },
+            "version": { "type": "string" },
+            "snapshot": { "$ref": "common.schema.json#/$defs/snapshot" }
+          }
+        },
+        "build_policy": { "$ref": "common.schema.json#/$defs/build_policy" },
+        "implementations": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/implementation" }
+        },
+        "corpus": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "digest", "source", "oracle", "imported_from"],
+          "properties": {
+            "id": { "$ref": "common.schema.json#/$defs/name" },
+            "digest": { "$ref": "common.schema.json#/$defs/digest" },
+            "source": { "$ref": "common.schema.json#/$defs/url" },
+            "oracle": { "type": "string" },
+            "imported_from": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["repository", "commit", "path", "sha256"],
+              "properties": {
+                "repository": { "$ref": "common.schema.json#/$defs/url" },
+                "commit": { "$ref": "common.schema.json#/$defs/commit" },
+                "path": { "$ref": "common.schema.json#/$defs/relative_path" },
+                "sha256": { "$ref": "common.schema.json#/$defs/digest" }
+              }
+            }
+          }
+        },
+        "suite": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "cases"],
+          "properties": {
+            "id": { "$ref": "common.schema.json#/$defs/suite_id" },
+            "cases": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/case" } }
+          }
+        },
+        "roles": {
+          "type": "object",
+          "propertyNames": { "$ref": "common.schema.json#/$defs/role" },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["arch", "threads"],
+            "properties": {
+              "arch": { "$ref": "common.schema.json#/$defs/arch" },
+              "threads": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/threads" } }
+            }
+          }
+        },
+        "measurement": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["warmups", "repetitions", "timeout_s", "order", "noise_max_range_permille", "film_grain", "output_policy", "frame_delay", "timing_boundary"],
+          "properties": {
+            "warmups": { "type": "integer", "minimum": 0 },
+            "repetitions": { "type": "integer", "minimum": 1 },
+            "timeout_s": { "type": "integer", "minimum": 1 },
+            "order": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["policy", "seed"],
+              "properties": {
+                "policy": { "enum": ["seeded-rotation/1"] },
+                "seed": { "type": "integer", "minimum": 0 }
+              }
+            },
+            "noise_max_range_permille": { "type": "integer", "minimum": 0 },
+            "film_grain": { "const": "apply" },
+            "output_policy": { "const": "raw-discard" },
+            "frame_delay": { "const": "decoder-default" },
+            "timing_boundary": { "const": "process-wall" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "implementation": {
+      "description": "Resolved by `git ls-remote` at lock time. Later steps fetch by commit and never resolve again.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "adapter", "repository", "select", "release_tag_pattern", "release_url_template", "commit", "identity", "release"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/implementation_id" },
+        "name": { "type": "string" },
+        "adapter": { "enum": ["splot", "dav2d", "avm", "fixture"] },
+        "repository": { "$ref": "common.schema.json#/$defs/url" },
+        "select": { "type": "string" },
+        "release_tag_pattern": { "type": ["string", "null"] },
+        "release_url_template": { "type": ["string", "null"] },
+        "commit": { "$ref": "common.schema.json#/$defs/commit" },
+        "identity": { "$ref": "common.schema.json#/$defs/identity" },
+        "release": { "$ref": "common.schema.json#/$defs/release_or_null" }
+      }
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "url", "input_sha256", "bytes", "width", "height", "bit_depth", "chroma", "frames", "film_grain", "reference", "source_note", "terms_note", "workload"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/case_id" },
+        "name": { "type": "string" },
+        "url": { "$ref": "common.schema.json#/$defs/url" },
+        "input_sha256": { "$ref": "common.schema.json#/$defs/digest" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "bit_depth": { "$ref": "common.schema.json#/$defs/bit_depth" },
+        "chroma": { "$ref": "common.schema.json#/$defs/chroma" },
+        "frames": { "type": "integer", "minimum": 1 },
+        "film_grain": { "type": ["boolean", "null"] },
+        "reference": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["convention", "sha256", "raw_bytes"],
+          "properties": {
+            "convention": { "const": "avmdec-rawvideo-sha256" },
+            "sha256": { "$ref": "common.schema.json#/$defs/digest" },
+            "raw_bytes": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "source_note": { "type": ["string", "null"] },
+        "terms_note": { "type": ["string", "null"] },
+        "workload": { "$ref": "common.schema.json#/$defs/workload_decode_kind" }
+      }
+    }
+  }
+}

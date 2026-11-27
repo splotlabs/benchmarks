@@ -1,0 +1,540 @@
+{
+  "schema": "splotbench.summary/1",
+  "dataset_id": "ds-f5f4f92afb47136f",
+  "campaign_id": "fixture-decode-b26a85620211",
+  "name": "fixture-decode",
+  "lock_digest": "sha256:b26a85620211f8f5490bc91f3d633122523a8d98f225e265379f7d588333b4f1",
+  "origin": "synthetic",
+  "complete": false,
+  "workload": {
+    "kind": "decode"
+  },
+  "methodology": {
+    "id": "decode-cli-wall/1",
+    "timing_boundary": "process-wall",
+    "film_grain": "apply",
+    "output_policy": "raw-discard",
+    "frame_delay": "decoder-default",
+    "warmups": 1,
+    "repetitions": 3,
+    "timeout_s": 60,
+    "noise_max_range_permille": 50,
+    "build_policy": "optimized-source/1"
+  },
+  "aggregation": {
+    "version": "summary/1",
+    "harness": {
+      "repository": "https://github.com/splotlabs/benchmarks",
+      "commit": "91f810d94fe5ef6e6444b66395b7a3ff123b3c7a",
+      "snapshot_sha256": "sha256:c114b68c2cdae4edbb5fa31f916fc1f542482965001d390ae3f489fb81caec99",
+      "class": "development"
+    }
+  },
+  "corpus": {
+    "id": "fixture-corpus",
+    "digest": "sha256:1c0ca79d4efeac458a580bf59eb58b9422fde7550d5eb9c22f6bc4a70723b093",
+    "source": "https://example.invalid/synthetic/corpus",
+    "oracle": "fixture-oracle (synthetic), rawvideo SHA-256"
+  },
+  "suite": {
+    "id": "quick",
+    "cases_expected": 2
+  },
+  "metrics": {
+    "throughput": {
+      "unit": "frames/s",
+      "direction": "higher"
+    },
+    "wall_time": {
+      "unit": "ns",
+      "direction": "lower"
+    },
+    "cpu_time": {
+      "unit": "ns",
+      "direction": "lower"
+    },
+    "peak_rss": {
+      "unit": "bytes",
+      "direction": "lower"
+    },
+    "first_frame_latency": {
+      "unit": "ns",
+      "direction": "lower"
+    }
+  },
+  "machines": [
+    {
+      "machine_id": "fixture-arm64",
+      "role": "arm64",
+      "series_id": "ser-b2d6a61449d10e45",
+      "run_id": "arm64-20260101T000000Z-0f1e2d3c",
+      "run_state": "complete",
+      "class": "synthetic",
+      "threads": [
+        1,
+        2
+      ],
+      "measured_utc": {
+        "first": "2026-01-01T00:01:00Z",
+        "last": "2026-01-01T00:04:00Z"
+      },
+      "fingerprint_digest": "sha256:b13bd6d570a6f42935c37e1d699c8c2c6180f71eae2bbb0d3050f9e1a9df120c",
+      "fingerprint": {
+        "arch": "aarch64",
+        "os": {
+          "name": "FixtureOS",
+          "version": "1.0",
+          "kernel": "fixture-kernel 1.0"
+        },
+        "cpu": {
+          "model": "Fixture CPU (synthetic)",
+          "physical_cores": 4,
+          "logical_cores": 4,
+          "performance_cores": null,
+          "efficiency_cores": null,
+          "isa": [
+            "neon"
+          ]
+        },
+        "memory_bytes": 8589934592,
+        "python": "3.11.0",
+        "power": null,
+        "affinity": null
+      },
+      "bundle": {
+        "path": "bundles/arm64-20260101T000000Z-0f1e2d3c.tar.gz",
+        "sha256": "sha256:10ed995f4341f8f8c631217c8b3babfe65458a64da010864e1148fab1d25f8fe",
+        "bytes": 1
+      }
+    }
+  ],
+  "implementations": [
+    {
+      "id": "fixture-a",
+      "name": "Fixture A",
+      "repository": "https://example.invalid/synthetic/fixture-a.git",
+      "commit": "93278947f02658f2a2fb6cd124d453edaf9928c3",
+      "identity": "release",
+      "release": {
+        "tag": "v1.0.0",
+        "version": "1.0.0",
+        "url": "https://example.invalid/synthetic/fixture-a/releases/v1.0.0"
+      },
+      "build_origin": "source-release",
+      "snapshot_sha256": "sha256:2d2f10866afccfd6fe6cfe6a51ffa50dfaf23af1d05c73e3100b6d2004feb104"
+    },
+    {
+      "id": "fixture-b",
+      "name": "Fixture B",
+      "repository": "https://example.invalid/synthetic/fixture-b.git",
+      "commit": "e45b897d529b9104ee70d1ee62f54f47ae9ccc04",
+      "identity": "development",
+      "release": null,
+      "build_origin": "source-development",
+      "snapshot_sha256": "sha256:8213716202ceb1a72e2ec46eb7b08ed046c6d2bedef614262e460c166ac63861"
+    }
+  ],
+  "builds": [
+    {
+      "build_id": "bld-c6742bbc0ce4f3ed",
+      "implementation": "fixture-a",
+      "class": "synthetic",
+      "binary_sha256": "sha256:6f7e4cff76618872913deb456a8b21dcf9d872d28a31be38e6c7d5ab5dc8ee6f",
+      "libraries": [],
+      "version_output": "fixture-a 1.0.0 (synthetic)",
+      "target": "aarch64-apple-darwin",
+      "toolchain": {
+        "cc": "fixture-cc 1.0 (synthetic)"
+      },
+      "configuration": {
+        "summary": "synthetic fixture build",
+        "arguments": [
+          "fixture-build",
+          "--release"
+        ],
+        "target_cpu": "toolchain-default",
+        "simd": "on",
+        "lto": "off",
+        "pgo": false
+      },
+      "machine_id": "fixture-arm64"
+    },
+    {
+      "build_id": "bld-049f9d8b2d320c8e",
+      "implementation": "fixture-b",
+      "class": "synthetic",
+      "binary_sha256": "sha256:9b50f3caeff2d4e246fe836c0a58165966b7f867cf2b849b2b245eec5b15f042",
+      "libraries": [],
+      "version_output": "fixture-b 1.0.0 (synthetic)",
+      "target": "aarch64-apple-darwin",
+      "toolchain": {
+        "cc": "fixture-cc 1.0 (synthetic)"
+      },
+      "configuration": {
+        "summary": "synthetic fixture build",
+        "arguments": [
+          "fixture-build",
+          "--release"
+        ],
+        "target_cpu": "toolchain-default",
+        "simd": "on",
+        "lto": "off",
+        "pgo": false
+      },
+      "machine_id": "fixture-arm64"
+    }
+  ],
+  "cases": [
+    {
+      "id": "fixture-case-8bit",
+      "name": "fixture-case-8bit.obu",
+      "width": 64,
+      "height": 64,
+      "bit_depth": 8,
+      "chroma": "4:2:0",
+      "frames": 2,
+      "bytes": 512,
+      "input_sha256": "sha256:4a29f17d747983f2c7bced18d348a84c6b5c12d9d5025cdac237bfbd7765d87b",
+      "url": "https://example.invalid/synthetic/corpus/fixture-case-8bit.obu",
+      "film_grain": false
+    },
+    {
+      "id": "fixture-case-10bit",
+      "name": "fixture-case-10bit.obu",
+      "width": 64,
+      "height": 64,
+      "bit_depth": 10,
+      "chroma": "4:2:0",
+      "frames": 2,
+      "bytes": 640,
+      "input_sha256": "sha256:a6c1104218428602b5c01a127b9bb973337c0520c443c1fd9d2f89931ae4bf30",
+      "url": "https://example.invalid/synthetic/corpus/fixture-case-10bit.obu",
+      "film_grain": null
+    }
+  ],
+  "cells": [
+    {
+      "machine_id": "fixture-arm64",
+      "case_id": "fixture-case-8bit",
+      "threads": 1,
+      "implementation": "fixture-a",
+      "build_id": "bld-c6742bbc0ce4f3ed",
+      "status": "ok",
+      "n_measured": 3,
+      "n_valid": 3,
+      "noisy": false,
+      "frames": 2,
+      "wall_ns_median": 20000000.0,
+      "fps_median": 100.0,
+      "fps_min": 100.0,
+      "fps_max": 100.0,
+      "fps_mad": 0.0,
+      "cpu_ns_median": null,
+      "peak_rss_bytes_median": 1048576,
+      "first_frame_latency_ns": null,
+      "scaling_vs_1t": 1.0
+    },
+    {
+      "machine_id": "fixture-arm64",
+      "case_id": "fixture-case-8bit",
+      "threads": 1,
+      "implementation": "fixture-b",
+      "build_id": "bld-049f9d8b2d320c8e",
+      "status": "ok",
+      "n_measured": 3,
+      "n_valid": 3,
+      "noisy": false,
+      "frames": 2,
+      "wall_ns_median": 40000000.0,
+      "fps_median": 50.0,
+      "fps_min": 50.0,
+      "fps_max": 50.0,
+      "fps_mad": 0.0,
+      "cpu_ns_median": null,
+      "peak_rss_bytes_median": 1048576,
+      "first_frame_latency_ns": null,
+      "scaling_vs_1t": 1.0
+    },
+    {
+      "machine_id": "fixture-arm64",
+      "case_id": "fixture-case-8bit",
+      "threads": 2,
+      "implementation": "fixture-a",
+      "build_id": "bld-c6742bbc0ce4f3ed",
+      "status": "ok",
+      "n_measured": 3,
+      "n_valid": 3,
+      "noisy": false,
+      "frames": 2,
+      "wall_ns_median": 10000000.0,
+      "fps_median": 200.0,
+      "fps_min": 200.0,
+      "fps_max": 200.0,
+      "fps_mad": 0.0,
+      "cpu_ns_median": null,
+      "peak_rss_bytes_median": 1048576,
+      "first_frame_latency_ns": null,
+      "scaling_vs_1t": 2.0
+    },
+    {
+      "machine_id": "fixture-arm64",
+      "case_id": "fixture-case-8bit",
+      "threads": 2,
+      "implementation": "fixture-b",
+      "build_id": "bld-049f9d8b2d320c8e",
+      "status": "ok",
+      "n_measured": 3,
+      "n_valid": 3,
+      "noisy": false,
+      "frames": 2,
+      "wall_ns_median": 20000000.0,
+      "fps_median": 100.0,
+      "fps_min": 100.0,
+      "fps_max": 100.0,
+      "fps_mad": 0.0,
+      "cpu_ns_median": null,
+      "peak_rss_bytes_median": 1048576,
+      "first_frame_latency_ns": null,
+      "scaling_vs_1t": 2.0
+    },
+    {
+      "machine_id": "fixture-arm64",
+      "case_id": "fixture-case-10bit",
+      "threads": 1,
+      "implementation": "fixture-a",
+      "build_id": "bld-c6742bbc0ce4f3ed",
+      "status": "ok",
+      "n_measured": 3,
+      "n_valid": 3,
+      "noisy": false,
+      "frames": 2,
+      "wall_ns_median": 20000000.0,
+      "fps_median": 100.0,
+      "fps_min": 100.0,
+      "fps_max": 100.0,
+      "fps_mad": 0.0,
+      "cpu_ns_median": null,
+      "peak_rss_bytes_median": 1048576,
+      "first_frame_latency_ns": null,
+      "scaling_vs_1t": 1.0
+    },
+    {
+      "machine_id": "fixture-arm64",
+      "case_id": "fixture-case-10bit",
+      "threads": 1,
+      "implementation": "fixture-b",
+      "build_id": "bld-049f9d8b2d320c8e",
+      "status": "incorrect",
+      "n_measured": 0,
+      "n_valid": 0,
+      "noisy": false,
+      "frames": null,
+      "wall_ns_median": null,
+      "fps_median": null,
+      "fps_min": null,
+      "fps_max": null,
+      "fps_mad": null,
+      "cpu_ns_median": null,
+      "peak_rss_bytes_median": null,
+      "first_frame_latency_ns": null,
+      "scaling_vs_1t": null
+    },
+    {
+      "machine_id": "fixture-arm64",
+      "case_id": "fixture-case-10bit",
+      "threads": 2,
+      "implementation": "fixture-a",
+      "build_id": "bld-c6742bbc0ce4f3ed",
+      "status": "ok",
+      "n_measured": 3,
+      "n_valid": 3,
+      "noisy": false,
+      "frames": 2,
+      "wall_ns_median": 10000000.0,
+      "fps_median": 200.0,
+      "fps_min": 200.0,
+      "fps_max": 200.0,
+      "fps_mad": 0.0,
+      "cpu_ns_median": null,
+      "peak_rss_bytes_median": 1048576,
+      "first_frame_latency_ns": null,
+      "scaling_vs_1t": 2.0
+    },
+    {
+      "machine_id": "fixture-arm64",
+      "case_id": "fixture-case-10bit",
+      "threads": 2,
+      "implementation": "fixture-b",
+      "build_id": "bld-049f9d8b2d320c8e",
+      "status": "incorrect",
+      "n_measured": 0,
+      "n_valid": 0,
+      "noisy": false,
+      "frames": null,
+      "wall_ns_median": null,
+      "fps_median": null,
+      "fps_min": null,
+      "fps_max": null,
+      "fps_mad": null,
+      "cpu_ns_median": null,
+      "peak_rss_bytes_median": null,
+      "first_frame_latency_ns": null,
+      "scaling_vs_1t": null
+    }
+  ],
+  "speedups": [
+    {
+      "machine_id": "fixture-arm64",
+      "case_id": "fixture-case-8bit",
+      "threads": 1,
+      "implementation": "fixture-a",
+      "baseline": "fixture-b",
+      "ratio": 2.0
+    },
+    {
+      "machine_id": "fixture-arm64",
+      "case_id": "fixture-case-8bit",
+      "threads": 1,
+      "implementation": "fixture-b",
+      "baseline": "fixture-a",
+      "ratio": 0.5
+    },
+    {
+      "machine_id": "fixture-arm64",
+      "case_id": "fixture-case-8bit",
+      "threads": 2,
+      "implementation": "fixture-a",
+      "baseline": "fixture-b",
+      "ratio": 2.0
+    },
+    {
+      "machine_id": "fixture-arm64",
+      "case_id": "fixture-case-8bit",
+      "threads": 2,
+      "implementation": "fixture-b",
+      "baseline": "fixture-a",
+      "ratio": 0.5
+    }
+  ],
+  "aggregates": [
+    {
+      "machine_id": "fixture-arm64",
+      "threads": 1,
+      "bit_depth": 8,
+      "implementation": "fixture-a",
+      "baseline": "fixture-b",
+      "geomean_ratio": 2.0,
+      "n_matched": 1,
+      "n_expected": 1,
+      "excluded": []
+    },
+    {
+      "machine_id": "fixture-arm64",
+      "threads": 1,
+      "bit_depth": 8,
+      "implementation": "fixture-b",
+      "baseline": "fixture-a",
+      "geomean_ratio": 0.5,
+      "n_matched": 1,
+      "n_expected": 1,
+      "excluded": []
+    },
+    {
+      "machine_id": "fixture-arm64",
+      "threads": 1,
+      "bit_depth": 10,
+      "implementation": "fixture-a",
+      "baseline": "fixture-b",
+      "geomean_ratio": null,
+      "n_matched": 0,
+      "n_expected": 1,
+      "excluded": [
+        {
+          "case_id": "fixture-case-10bit",
+          "reason": "fixture-b: incorrect"
+        }
+      ]
+    },
+    {
+      "machine_id": "fixture-arm64",
+      "threads": 1,
+      "bit_depth": 10,
+      "implementation": "fixture-b",
+      "baseline": "fixture-a",
+      "geomean_ratio": null,
+      "n_matched": 0,
+      "n_expected": 1,
+      "excluded": [
+        {
+          "case_id": "fixture-case-10bit",
+          "reason": "fixture-b: incorrect"
+        }
+      ]
+    },
+    {
+      "machine_id": "fixture-arm64",
+      "threads": 2,
+      "bit_depth": 8,
+      "implementation": "fixture-a",
+      "baseline": "fixture-b",
+      "geomean_ratio": 2.0,
+      "n_matched": 1,
+      "n_expected": 1,
+      "excluded": []
+    },
+    {
+      "machine_id": "fixture-arm64",
+      "threads": 2,
+      "bit_depth": 8,
+      "implementation": "fixture-b",
+      "baseline": "fixture-a",
+      "geomean_ratio": 0.5,
+      "n_matched": 1,
+      "n_expected": 1,
+      "excluded": []
+    },
+    {
+      "machine_id": "fixture-arm64",
+      "threads": 2,
+      "bit_depth": 10,
+      "implementation": "fixture-a",
+      "baseline": "fixture-b",
+      "geomean_ratio": null,
+      "n_matched": 0,
+      "n_expected": 1,
+      "excluded": [
+        {
+          "case_id": "fixture-case-10bit",
+          "reason": "fixture-b: incorrect"
+        }
+      ]
+    },
+    {
+      "machine_id": "fixture-arm64",
+      "threads": 2,
+      "bit_depth": 10,
+      "implementation": "fixture-b",
+      "baseline": "fixture-a",
+      "geomean_ratio": null,
+      "n_matched": 0,
+      "n_expected": 1,
+      "excluded": [
+        {
+          "case_id": "fixture-case-10bit",
+          "reason": "fixture-b: incorrect"
+        }
+      ]
+    }
+  ],
+  "downloads": {
+    "manifest": "manifest.json",
+    "csv": "summary.csv",
+    "lock": "lock.json",
+    "checksums": "SHA256SUMS"
+  },
+  "reproduce": {
+    "repository": "https://github.com/splotlabs/benchmarks",
+    "harness_commit": "91f810d94fe5ef6e6444b66395b7a3ff123b3c7a",
+    "instructions": "https://github.com/splotlabs/benchmarks/blob/91f810d94fe5ef6e6444b66395b7a3ff123b3c7a/docs/FORMATS.md"
+  }
+}

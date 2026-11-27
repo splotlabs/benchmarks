@@ -1,0 +1,281 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common.schema.json",
+  "title": "Shared definitions for every splotbench format",
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "digest_or_null": { "type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$" },
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "commit_or_null": { "type": ["string", "null"], "pattern": "^[0-9a-f]{40}$" },
+    "utc": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$" },
+    "utc_or_null": { "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$" },
+    "utc_range": {
+      "description": "First and last measurement time. Null when nothing was measured.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["first", "last"],
+      "properties": {
+        "first": { "$ref": "#/$defs/utc_or_null" },
+        "last": { "$ref": "#/$defs/utc_or_null" }
+      }
+    },
+    "url": { "type": "string", "pattern": "^(https|file)://[^\\s]+$" },
+    "relative_path": {
+      "description": "A path relative to the file or directory that contains it. No leading slash, no '..' part.",
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))[^\\s\\\\]+$"
+    },
+    "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$" },
+    "implementation_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,40}$" },
+    "role": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,40}$" },
+    "machine_id": {
+      "description": "Owner-chosen machine name. Never a MAC address or a serial number.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,40}$"
+    },
+    "case_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,80}$" },
+    "campaign_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}-[0-9a-f]{12}$" },
+    "run_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,40}-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$" },
+    "attempt_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,40}-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}#[1-9][0-9]*$" },
+    "build_id": { "type": "string", "pattern": "^bld-[0-9a-f]{16}$" },
+    "dataset_id": { "type": "string", "pattern": "^ds-[0-9a-f]{16}$" },
+    "series_id": { "type": "string", "pattern": "^ser-[0-9a-f]{16}$" },
+    "count": { "type": "integer", "minimum": 0 },
+    "count_or_null": { "type": ["integer", "null"], "minimum": 0 },
+    "threads": { "type": "integer", "minimum": 1, "maximum": 1024 },
+    "arch": { "enum": ["aarch64", "x86_64"] },
+    "bit_depth": { "enum": [8, 10, 12] },
+    "chroma": { "enum": ["4:0:0", "4:2:0", "4:2:2", "4:4:4"] },
+    "origin": {
+      "description": "Dataset origin. official: assembled with --official from complete verified runs.",
+      "enum": ["official", "local", "synthetic"]
+    },
+    "class": {
+      "description": "verified: git, clean, commit equals the lock. development: anything else. synthetic: from a synthetic lock.",
+      "enum": ["verified", "development", "synthetic"]
+    },
+    "identity": {
+      "description": "release only with a verified upstream release object; development otherwise.",
+      "enum": ["release", "development"]
+    },
+    "build_origin": {
+      "description": "upstream-release-asset is reserved; the harness rejects it.",
+      "enum": ["source-release", "source-development", "upstream-release-asset"]
+    },
+    "run_state": { "enum": ["in-progress", "complete", "interrupted"] },
+    "methodology": { "enum": ["decode-cli-wall/1"] },
+    "build_policy": { "enum": ["optimized-source/1"] },
+    "suite_id": { "enum": ["quick", "full"] },
+    "release": {
+      "description": "An upstream tag that matches the release pattern and peels to exactly the resolved commit.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tag", "version", "url"],
+      "properties": {
+        "tag": { "type": "string", "pattern": "^[^\\s]+$" },
+        "version": { "type": "string", "pattern": "^[^\\s]+$" },
+        "url": { "type": ["string", "null"], "pattern": "^https://[^\\s]+$" }
+      }
+    },
+    "release_or_null": {
+      "description": "null means development identity.",
+      "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/release" }]
+    },
+    "snapshot": {
+      "description": "Exact working-tree content of a source directory. snapshot_sha256 covers file bytes and modes, not compiler output.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["vcs", "commit", "tree", "dirty", "snapshot_sha256", "submodules"],
+      "properties": {
+        "vcs": { "enum": ["git", "none"] },
+        "commit": { "$ref": "#/$defs/commit_or_null" },
+        "tree": { "$ref": "#/$defs/commit_or_null" },
+        "dirty": { "type": "boolean" },
+        "snapshot_sha256": { "$ref": "#/$defs/digest" },
+        "submodules": { "type": "array", "items": { "$ref": "#/$defs/submodule" } }
+      }
+    },
+    "submodule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "commit", "snapshot"],
+      "properties": {
+        "path": { "$ref": "#/$defs/relative_path" },
+        "commit": { "$ref": "#/$defs/commit" },
+        "snapshot": {
+          "description": "null when the submodule is not initialised.",
+          "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/snapshot" }]
+        }
+      }
+    },
+    "source_provenance": {
+      "description": "Where a build's source came from: the locked upstream commit, its release status and the snapshot of the checkout that was built.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "commit", "identity", "release", "build_origin", "snapshot", "lockfiles"],
+      "properties": {
+        "repository": { "$ref": "#/$defs/url" },
+        "commit": { "$ref": "#/$defs/commit" },
+        "identity": { "$ref": "#/$defs/identity" },
+        "release": { "$ref": "#/$defs/release_or_null" },
+        "build_origin": { "$ref": "#/$defs/build_origin" },
+        "snapshot": { "$ref": "#/$defs/snapshot" },
+        "lockfiles": {
+          "description": "Dependency lock files of the checkout, for example Cargo.lock.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/file_digest" }
+        }
+      }
+    },
+    "harness": {
+      "description": "Identity of the harness code that produced or aggregated a record.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "commit", "snapshot_sha256", "class"],
+      "properties": {
+        "repository": { "$ref": "#/$defs/url" },
+        "commit": { "$ref": "#/$defs/commit_or_null" },
+        "snapshot_sha256": { "$ref": "#/$defs/digest" },
+        "class": { "$ref": "#/$defs/class" }
+      }
+    },
+    "file_digest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/relative_path" },
+        "sha256": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "sized_file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": { "$ref": "#/$defs/relative_path" },
+        "sha256": { "$ref": "#/$defs/digest" },
+        "bytes": { "$ref": "#/$defs/count" }
+      }
+    },
+    "build_configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "arguments", "target_cpu", "simd", "lto", "pgo"],
+      "properties": {
+        "summary": { "type": "string" },
+        "arguments": { "type": "array", "items": { "type": "string" } },
+        "target_cpu": { "type": "string" },
+        "simd": { "enum": ["on", "off"] },
+        "lto": { "type": "string" },
+        "pgo": { "type": "boolean" }
+      }
+    },
+    "toolchain": {
+      "description": "Free-form map of tool name to its version output.",
+      "type": "object",
+      "propertyNames": { "type": "string", "pattern": "^[A-Za-z0-9_.+-]{1,40}$" },
+      "additionalProperties": { "type": "string" }
+    },
+    "fingerprint": {
+      "description": "Observed host facts. A fact the OS does not give is null.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["arch", "os", "cpu", "memory_bytes"],
+      "properties": {
+        "arch": { "$ref": "#/$defs/arch" },
+        "os": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "version", "kernel"],
+          "properties": {
+            "name": { "type": "string" },
+            "version": { "type": ["string", "null"] },
+            "kernel": { "type": ["string", "null"] }
+          }
+        },
+        "cpu": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["model", "physical_cores", "logical_cores", "performance_cores", "efficiency_cores", "isa"],
+          "properties": {
+            "model": { "type": ["string", "null"] },
+            "physical_cores": { "type": ["integer", "null"], "minimum": 1 },
+            "logical_cores": { "type": ["integer", "null"], "minimum": 1 },
+            "performance_cores": { "type": ["integer", "null"], "minimum": 0 },
+            "efficiency_cores": { "type": ["integer", "null"], "minimum": 0 },
+            "isa": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "memory_bytes": { "type": ["integer", "null"], "minimum": 1 },
+        "python": { "type": ["string", "null"] },
+        "power": { "type": ["string", "null"] },
+        "affinity": { "type": ["string", "null"] }
+      }
+    },
+    "metric_dictionary": {
+      "description": "The only metric names. Decode metrics only; an encode workload gets its own names.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["throughput", "wall_time", "cpu_time", "peak_rss", "first_frame_latency"],
+      "properties": {
+        "throughput": { "$ref": "#/$defs/metric_frames_per_second_higher" },
+        "wall_time": { "$ref": "#/$defs/metric_ns_lower" },
+        "cpu_time": { "$ref": "#/$defs/metric_ns_lower" },
+        "peak_rss": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["unit", "direction"],
+          "properties": { "unit": { "const": "bytes" }, "direction": { "const": "lower" } }
+        },
+        "first_frame_latency": { "$ref": "#/$defs/metric_ns_lower" }
+      }
+    },
+    "metric_ns_lower": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unit", "direction"],
+      "properties": { "unit": { "const": "ns" }, "direction": { "const": "lower" } }
+    },
+    "metric_frames_per_second_higher": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unit", "direction"],
+      "properties": { "unit": { "const": "frames/s" }, "direction": { "const": "higher" } }
+    },
+    "case": {
+      "description": "Case facts as the summary shows them.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "width", "height", "bit_depth", "chroma", "frames", "bytes", "input_sha256", "url", "film_grain"],
+      "properties": {
+        "id": { "$ref": "#/$defs/case_id" },
+        "name": { "type": "string" },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "bit_depth": { "$ref": "#/$defs/bit_depth" },
+        "chroma": { "$ref": "#/$defs/chroma" },
+        "frames": { "type": "integer", "minimum": 1 },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "input_sha256": { "$ref": "#/$defs/digest" },
+        "url": { "$ref": "#/$defs/url" },
+        "film_grain": { "type": ["boolean", "null"] }
+      }
+    },
+    "workload_decode_kind": {
+      "description": "Workload envelope with no payload beyond its kind.",
+      "type": "object",
+      "discriminator": {
+        "property": "kind",
+        "mapping": {
+          "decode": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind"],
+            "properties": { "kind": { "const": "decode" } }
+          }
+        }
+      }
+    }
+  }
+}

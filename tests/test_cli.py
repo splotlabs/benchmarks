@@ -33,8 +33,9 @@ class CliTest(unittest.TestCase):
         self.assertIn("identity", done.stdout)
         self.assertIn("exit codes:", done.stdout)
         subparsers = next(a for a in build_parser()._actions if isinstance(a, argparse._SubParsersAction))
-        self.assertEqual(sorted(subparsers.choices), ["identity"])
-        self.assertEqual(bench(ROOT, "identity", "--help").returncode, 0)
+        self.assertEqual(sorted(subparsers.choices), ["identity", "validate"])
+        for command in subparsers.choices:
+            self.assertEqual(bench(ROOT, command, "--help").returncode, 0)
 
     def test_version_with_known_commit(self):
         harness = harness_copy(self.temporary / "synthetic-harness", with_git=True)
@@ -49,7 +50,7 @@ class CliTest(unittest.TestCase):
         self.assertEqual(done.stdout, f"bench {__version__}\n")
 
     def test_usage_errors_exit_2(self):
-        for args in ((), ("synthetic-unknown-command",), ("identity", "--synthetic-unknown-option")):
+        for args in ((), ("synthetic-unknown-command",), ("identity", "--synthetic-unknown-option"), ("validate",)):
             with self.subTest(args=args):
                 done = bench(ROOT, *args)
                 self.assertEqual(done.returncode, 2)
