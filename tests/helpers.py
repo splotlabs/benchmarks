@@ -14,10 +14,10 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# Each test process, and each `bench` child it starts, gets its own system temporary directory.
+# Each test process, and each `bench` child it starts, gets its own temporary and runtime directory.
 # So the host lock of the tests never meets a real run or a parallel CI job on the same runner.
 TEMPORARY = tempfile.mkdtemp(prefix="splotbench-tests-")
-os.environ["TMPDIR"] = tempfile.tempdir = TEMPORARY
+os.environ["TMPDIR"] = os.environ["XDG_RUNTIME_DIR"] = tempfile.tempdir = TEMPORARY
 atexit.register(shutil.rmtree, TEMPORARY, True)
 
 # Keep the developer's global and system Git configuration out of the tests.

@@ -25,9 +25,9 @@ These rules are canonical. `CLAUDE.md` points to this file.
 - Keep the exit codes: 0 success, 1 failure of the operation, 2 usage error,
   3 missing prerequisite or configuration, 130 interrupted.
 - Write nothing outside the user-selected work directory and explicit `-o` paths,
-  with two exceptions: the host lock file `splotbench-host-<uid>.lock` in the
-  system temporary directory, and `bench publish`, whose default target is
-  `published/` of the checkout.
+  with two exceptions: the host lock `splotbench/host.lock` in a directory of the
+  user (`$XDG_RUNTIME_DIR`, else `$XDG_CACHE_HOME`, else `~/.cache`), and
+  `bench publish`, whose default target is `published/` of the checkout.
 - Record no environment variable outside `util.ENV_ALLOWLIST`.
 
 ## Data

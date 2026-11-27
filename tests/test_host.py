@@ -64,12 +64,39 @@ class HostLockTest(unittest.TestCase):
         self.assertIsNone(host.lock_holder())
         self.assertFalse(host.lock_path().exists())
 
-    def test_one_lock_file_for_the_host_with_mode_0600(self):
-        self.assertEqual(host.lock_path(), Path(tempfile.gettempdir()) / f"splotbench-host-{os.getuid()}.lock")
-        with host.HostLock() as held:
-            self.assertEqual(held.path, host.lock_path())
+    def test_the_lock_lives_in_a_directory_of_the_user(self):
+        runtime = tempfile.mkdtemp()  # an existing directory of this user
+        cache = str(Path(tempfile.mkdtemp()) / "synthetic-cache")
+        for env, expected in (
+            ({"XDG_RUNTIME_DIR": runtime, "XDG_CACHE_HOME": cache}, Path(runtime)),
+            ({"XDG_RUNTIME_DIR": runtime + "-missing", "XDG_CACHE_HOME": cache}, Path(cache)),
+            ({}, Path.home() / ".cache"),
+        ):
+            with self.subTest(env=env), mock.patch.dict(os.environ, env, clear=False):
+                for name in {"XDG_RUNTIME_DIR", "XDG_CACHE_HOME"} - env.keys():
+                    os.environ.pop(name, None)
+                self.assertEqual(host.lock_path(), expected / "splotbench" / "host.lock")
+
+    def test_created_directory_has_mode_0700_and_the_file_0600(self):
+        directory = Path(tempfile.mkdtemp()) / "splotbench"
+        with mock.patch.object(host, "LOCK_DIRECTORY", str(directory)), host.HostLock() as held:
+            self.assertEqual(held.path, directory / "host.lock")
+            self.assertEqual(os.stat(directory).st_mode & 0o777, 0o700)
             self.assertEqual(os.stat(held.path).st_mode & 0o777, 0o600)
             self.assertEqual(held.path.read_text(), f"{os.getpid()}\n")
+
+    def test_a_linked_or_non_directory_lock_directory_is_refused(self):
+        root = Path(tempfile.mkdtemp())
+        (root / "synthetic-real").mkdir()
+        (root / "synthetic-link").symlink_to(root / "synthetic-real")
+        (root / "synthetic-file").write_text("")
+        for name in ("synthetic-link", "synthetic-file"):
+            with self.subTest(name=name), mock.patch.object(host, "LOCK_DIRECTORY", str(root / name)):
+                with self.assertRaisesRegex(BenchError, "lock directory .* is a symbolic link or not a directory"):
+                    host.HostLock().__enter__()
+                with self.assertRaisesRegex(BenchError, "lock directory .* is a symbolic link or not a directory"):
+                    host.lock_holder()
+        self.assertEqual(os.listdir(root / "synthetic-real"), [])
 
     def test_a_link_or_a_directory_is_refused(self):
         self.fresh_lock_directory()
@@ -80,9 +107,9 @@ class HostLockTest(unittest.TestCase):
             make(path)
             try:
                 with self.subTest(kind=kind):
-                    with self.assertRaisesRegex(BenchError, "host lock .* Remove it"):
+                    with self.assertRaisesRegex(BenchError, "host lock /.* Remove it"):
                         host.HostLock().__enter__()
-                    with self.assertRaisesRegex(BenchError, "host lock .* Remove it"):
+                    with self.assertRaisesRegex(BenchError, "host lock /.* Remove it"):
                         host.lock_holder()
             finally:
                 path.unlink() if path.is_symlink() else path.rmdir()
