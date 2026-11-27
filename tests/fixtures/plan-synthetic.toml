@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# SPDX-License-Identifier: MIT
 # Synthetic plan for tests. The tests replace @REPO_A@ and @REPO_B@ with file:// repositories
 # and write the corpus files next to the plan.
 name = "synthetic-campaign"

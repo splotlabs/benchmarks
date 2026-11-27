@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# SPDX-License-Identifier: MIT
 """Decoder adapters. Each module has the same functions; `docs/METHODOLOGY.md` is the contract.
 
 recipe(src, arch)        build recipe: steps, binary, lock files, toolchain, configuration

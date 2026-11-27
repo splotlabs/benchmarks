@@ -11,4 +11,7 @@ An existing dataset directory never changes and is never deleted. A correction i
 dataset. Add a dataset only with `bench publish`, through a pull request. See
 [docs/PUBLISHING.md](../docs/PUBLISHING.md).
 
+Datasets published in this directory are part of the repository. They are offered under
+the same [MIT License](../LICENSE).
+
 No results are published yet.

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# SPDX-License-Identifier: MIT
 """Deterministic run bundles: write, check and read.
 
 A bundle is a gzip-compressed USTAR archive of a run directory plus

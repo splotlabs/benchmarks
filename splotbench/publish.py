@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# SPDX-License-Identifier: MIT
 """`bench publish`: copy one assembled dataset into a `published/` directory of this repository.
 
 The command changes files inside the target directory only. It never runs Git: the owner

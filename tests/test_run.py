@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# SPDX-License-Identifier: MIT
 """Tests for `bench doctor`, `bench run` and `bench bundle` with the synthetic fixture decoder."""
 
 import contextlib

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# SPDX-License-Identifier: MIT
 """Tests for `bench publish` and `bench validate` of a published directory.
 
 Datasets are assembled from synthetic bundles with an injected harness and written to temporary

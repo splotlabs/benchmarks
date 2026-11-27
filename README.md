@@ -111,7 +111,9 @@ into Git. `.gitignore` excludes them.
 
 ## Licence
 
-The first-party material is source-available under
-[PolyForm Noncommercial 1.0.0](LICENSE.md). It is not open source. The contribution
-policy of SplotLabs is in
+This repository is licensed under the [MIT License](LICENSE). The decoders that the
+harness builds and the streams that it downloads are third-party material under their
+own terms. They are not part of this repository. Splot itself is source-available under
+PolyForm Noncommercial 1.0.0; the licence of this repository does not change that. The
+contribution policy of SplotLabs is in
 [splotlabs/.github CONTRIBUTING.md](https://github.com/splotlabs/.github/blob/main/CONTRIBUTING.md).

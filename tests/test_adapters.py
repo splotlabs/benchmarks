@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# SPDX-License-Identifier: MIT
 """Adapter recipes, commands, capability checks and output parsing. No real decoder runs."""
 
 import os

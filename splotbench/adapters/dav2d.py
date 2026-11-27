@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# SPDX-License-Identifier: MIT
 """dav2d (`tools/dav2d`). Inspected source facts are in docs/METHODOLOGY.md."""
 
 from __future__ import annotations
