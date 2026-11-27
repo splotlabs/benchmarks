@@ -36,6 +36,8 @@ Run the commands from the repository root.
 ./bench prepare --lock LOCK --role ROLE --work W [--offline]   # fetch and verify the corpus
 ./bench assemble --lock LOCK.json BUNDLE... -o OUT [--select ROLE=RUN_ID] [--official]
                           # check bundles and write OUT/datasets/<dataset_id>/
+./bench publish DATASET_DIR [--to DIR] [--dry-run] [--promote] [--allow-local]
+                          # copy a dataset into published/ for a pull request; see docs/PUBLISHING.md
 ```
 
 The data formats and identities are described in [docs/FORMATS.md](docs/FORMATS.md).
@@ -57,12 +59,13 @@ with Python 3.11 and 3.14.
 | Path | Contents |
 | --- | --- |
 | `bench` | Entry script. |
-| `splotbench/` | The harness package. `cli.py` registers one parser per command module. `schema.py` validates, `provenance.py` records source, release and binary identity, `bundle.py` writes and reads bundles, `assemble.py` checks bundles and builds datasets. |
+| `splotbench/` | The harness package. `cli.py` registers one parser per command module. `schema.py` validates, `provenance.py` records source, release and binary identity, `bundle.py` writes and reads bundles, `assemble.py` checks bundles and builds datasets, `publish.py` copies a dataset into `published/` on explicit command. |
 | `corpus/`, `campaigns/` | The pinned corpus manifest and suites, and the campaign plan template. `plan.py` makes locks and the matrix, `corpus.py` verifies the stream cache. |
+| `published/` | Published official datasets and `index.json`, added only with `bench publish` through a pull request. Existing dataset directories never change. |
 | `schemas/` | JSON Schema files: the source of truth for every data format. |
-| `docs/` | Format documentation. |
+| `docs/` | Format documentation and the publishing procedure. |
 | `tests/` | Unit tests and synthetic fixtures (`tests/fixtures/`). |
-| `.github/workflows/` | CI: unit tests only. No benchmark runs, schedules or publication. |
+| `.github/workflows/` | CI: unit tests and the checks of committed published data. No benchmark runs, schedules or publication. |
 
 Downloaded corpora, builds, raw runs, bundles and generated datasets do not go
 into Git. `.gitignore` excludes them.

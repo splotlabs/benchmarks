@@ -11,8 +11,9 @@ import sys
 from pathlib import Path
 
 from . import bundle, schema
-from .util import EXIT_FAILURE
+from .util import EXIT_FAILURE, EXIT_PREREQUISITE, BenchError, run
 
+MAX_PUBLISHED_FILE_BYTES = 50 * 1024 * 1024  # a file in Git; the hosting limit is 100 MB
 DATASET_DOCUMENTS = {
     "manifest.json": ("object", "splotbench.dataset/1"),
     "summary.json": ("object", "splotbench.summary/1"),
@@ -89,8 +90,100 @@ def dataset_problems(directory: Path) -> list[str]:
     return problems
 
 
+def published_problems(directory: Path) -> list[str]:
+    """Check a published directory: index.json, its dataset directories and the size limit."""
+    from . import assemble  # assemble imports this module
+
+    problems = []
+    for path in sorted(directory.rglob("*")):
+        if path.is_file() and path.stat().st_size > MAX_PUBLISHED_FILE_BYTES:
+            problems.append(f"{path.relative_to(directory).as_posix()}: above {MAX_PUBLISHED_FILE_BYTES} bytes (50 MiB)")
+    problems += [
+        f"{path.name}: unexpected entry. Only index.json, README.md and datasets/ belong here."
+        for path in sorted(directory.iterdir())
+        if path.name not in ("index.json", "README.md", "datasets")
+    ]
+    index_path = directory / "index.json"
+    if index_path.is_symlink() or not index_path.is_file():
+        return problems + ["index.json: missing or not a regular file"]
+    found = bundle.document_problems("index.json", index_path.read_bytes(), ("object", "splotbench.index/1"))
+    if found:
+        return problems + [f"index.json: {problem}" for problem in found]
+    index = schema.loads(index_path.read_bytes())
+    listed = {}
+    for entry in index["datasets"]:
+        if entry["dataset_id"] in listed:
+            problems.append(f"index.json: {entry['dataset_id']} is listed twice")
+        listed[entry["dataset_id"]] = entry
+    datasets = directory / "datasets"
+    if datasets.is_symlink() or (datasets.exists() and not datasets.is_dir()):
+        return problems + ["datasets: must be a directory, not a link or a file"]
+    present = sorted(p.name for p in datasets.iterdir()) if datasets.is_dir() else []
+    problems += [f"datasets/{name}: not listed in index.json" for name in present if name not in listed]
+    for dataset_id, entry in listed.items():
+        where = f"datasets/{dataset_id}"
+        if (datasets / dataset_id).is_symlink():
+            problems.append(f"{where}: a symbolic link is not a dataset directory")
+            continue
+        if not (datasets / dataset_id).is_dir():
+            problems.append(f"{where}: listed in index.json but missing")
+            continue
+        found = dataset_problems(datasets / dataset_id)
+        problems += [f"{where}: {problem}" for problem in found]
+        if found:
+            continue
+        manifest = schema.loads((datasets / dataset_id / "manifest.json").read_bytes())
+        summary = schema.loads((datasets / dataset_id / "summary.json").read_bytes())
+        if manifest["dataset_id"] != dataset_id:
+            problems.append(f"{where}: the manifest has dataset_id {manifest['dataset_id']}")
+        if manifest["origin"] == "synthetic":
+            problems.append(f"{where}: synthetic test data is never published")
+        if {k: v for k, v in entry.items() if k != "published_utc"} != assemble.index_entry(summary):
+            problems.append(f"index.json: the entry of {dataset_id} differs from its summary.json")
+    return problems
+
+
+def is_published_directory(path: Path) -> bool:
+    return path.is_dir() and ((path / "index.json").exists() or (path / "datasets").exists())
+
+
+def _git(directory: Path, *args: str) -> bytes:
+    done = run(["git", "-c", "core.quotePath=false", *args], cwd=directory)
+    if done.returncode:
+        raise BenchError(f"git {args[0]} failed in {directory}: {done.stderr.decode(errors='replace').strip()}",
+                         EXIT_PREREQUISITE)  # fmt: skip
+    return done.stdout
+
+
+def immutable_problems(directory: Path, ref: str) -> list[str]:
+    """List changes since `ref` that touch an existing dataset directory of a published directory.
+
+    Only added files in new dataset directories are allowed. `git ... -z` keeps every file name exact.
+    """
+    if ref.startswith("-"):
+        raise BenchError(f"{ref!r} is not a Git ref. Give a branch, tag or commit.", 2)
+    top = Path(_git(directory, "rev-parse", "--show-toplevel").decode().strip())
+    prefix = directory.resolve().relative_to(top.resolve()).as_posix() + "/datasets/"
+    existing = {
+        name[len(prefix):].split("/")[0]
+        for name in _git(top, "ls-tree", "-r", "-z", "--name-only", "--full-name", ref, "--", prefix).decode().split("\0")
+        if name.startswith(prefix)
+    }
+    fields = _git(top, "diff", "--name-status", "-z", "--no-renames", f"{ref}...HEAD", "--", prefix).decode().split("\0")
+    problems = []
+    for status, name in zip(fields[0::2], fields[1::2]):
+        dataset_id = name[len(prefix):].split("/")[0]
+        if status != "A":
+            problems.append(f"{name}: {'deleted' if status == 'D' else 'changed'} since {ref}. Published files never change.")
+        elif dataset_id in existing:
+            problems.append(f"{name}: added to the existing dataset directory {dataset_id}. Published datasets never change.")
+    return problems
+
+
 def problems_for(path: Path) -> list[str]:
     if path.is_dir():
+        if is_published_directory(path):
+            return published_problems(path)
         return dataset_problems(path)
     if path.name.endswith(".tar.gz"):
         return bundle.check_bundle(path)
@@ -107,6 +200,11 @@ def _validate(args: argparse.Namespace) -> int:
     failed = False
     for path in args.paths:
         problems = problems_for(path)
+        if args.immutable_since:
+            if is_published_directory(path):
+                problems += immutable_problems(path, args.immutable_since)
+            else:
+                problems.append("--immutable-since needs a published directory")
         for problem in problems:
             print(f"bench validate: {path}: {problem}", file=sys.stderr)
         if problems:
@@ -121,8 +219,10 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "validate",
         help="validate data files, bundles and dataset directories",
         description="Validate each PATH by its schema field: a .json file (lock, manifest, summary, index, "
-        "or an array of manifests), a .jsonl row file, a .tar.gz bundle or a dataset directory. "
+        "or an array of manifests), a .jsonl row file, a .tar.gz bundle, a dataset directory or a published directory (index.json and datasets/). "
         "Exit 1 when any PATH is invalid; each problem is one line on stderr.",
     )
     parser.add_argument("paths", nargs="+", type=Path, metavar="PATH")
+    parser.add_argument("--immutable-since", metavar="REF", help="for a published directory: also fail when a change since "
+                        "Git ref REF touches an existing dataset directory (CI runs it with the base branch)")  # fmt: skip
     parser.set_defaults(handler=_validate)
