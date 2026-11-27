@@ -91,6 +91,14 @@ and the assembled datasets (origin `local`, incomplete, 36 `ok` cells each) were
 On the arm64 runner the CPU model is `null`: Linux on arm64 has no model name in
 `/proc/cpuinfo`.
 
+A second run repeated the smoke on `main` at `1bb9b8982e19ded320e237dda8ad6a36b46c48a3`:
+[run 46046916203](https://github.com/splotlabs/benchmarks/actions/runs/46046916203). Both roles
+validated the lock `sha256:25d2648f69084ce5d532c91f98fdd3bc1d5fd0b2b5f88a018532dc069a2344c1`
+(Splot `768c1e05e87d5e98247f27f28856c6cf238040f4`, dav2d and avmdec at the same commits as
+before). Each role again gave `checks: 36 ok, 0 incorrect, 0 unsupported, 0 timeout, 0 error`
+and a complete run with 36 correctness rows and 36 attempt rows. The dav2d and avmdec build
+ids equal those of the first run on each architecture.
+
 ## Not verified
 
 - A physical Linux host. The Linux recipes, the correctness pass and a minimal runner
