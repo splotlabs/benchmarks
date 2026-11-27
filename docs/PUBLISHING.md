@@ -76,6 +76,12 @@ check reads Git with null-separated output, so every file name is exact. These c
 at committed files only. You can run the same check locally with
 `./bench validate published --immutable-since origin/main`.
 
+On a push to `main`, CI runs the same check against the commit before the push. That
+reports a direct push that changed a published dataset. It cannot prevent one. Only a
+protection rule on the `main` branch (no force-push, pull request required) prevents it;
+that is a repository setting of the owner. The data URL that the website reads follows
+`main`. A reader who needs a fixed copy uses the same path at a commit instead of `main`.
+
 `bench validate published` checks that the index is valid, that every listed dataset
 directory exists and is valid, that every dataset directory is listed, that
 `latest_complete` is null or names a listed complete official dataset, that no dataset is
