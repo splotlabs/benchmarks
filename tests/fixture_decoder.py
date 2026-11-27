@@ -7,6 +7,7 @@ Usage: decoder [--threads N] [-o PATH|-|--discard] INPUT. INPUT is JSON:
 "timed": {overrides for the timed run --discard}, "marker": path (apply "timed" once only)}.
 Modes: ok, wrong (other bytes), short (half the bytes), long (one byte more), fail (exit 3),
 unsupported, unsupported-option, hang, spawn-hang (start a descendant, write both pids, hang),
+stubborn-hang (ignore SIGTERM, hang),
 exit-after-output (correct bytes, exit 1), signal (correct bytes, then SIGKILL itself),
 noisy (8 MiB on stderr, then correct bytes), orphan-pipe (start a descendant that keeps
 stdout open, write both pids, write correct bytes, exit 0).
@@ -55,7 +56,9 @@ def main(argv: list[str]) -> int:
     if mode == "fail":
         print("fixture: decode failed", file=sys.stderr)
         return 3
-    if mode in ("hang", "spawn-hang"):
+    if mode == "stubborn-hang":
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    if mode in ("hang", "spawn-hang", "stubborn-hang"):
         if mode == "spawn-hang":
             child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(3600)"])
             with open(spec["pid_file"], "w") as file:

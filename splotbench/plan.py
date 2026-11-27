@@ -170,12 +170,15 @@ def build_lock(plan_path: Path, *, harness: dict | None = None) -> dict:
     """Resolve every implementation once and return the lock document.
 
     This is the only function that reads moving references (`git ls-remote`).
-    `harness` is the harness snapshot; the default is the snapshot of this checkout.
+    `harness` is the harness snapshot; the default is the snapshot of this checkout. A standard
+    plan needs a clean harness commit that the harness upstream serves.
     """
     plan = parse_plan(plan_path)
     base = Path(plan_path).resolve().parent
     harness = harness or provenance.snapshot(provenance.HARNESS_ROOT)
     _checked(_assemble(plan, base, harness, None))  # reject a bad plan before any network use
+    if plan["origin"] == "standard":
+        provenance.check_harness(harness, provenance.HARNESS_REPOSITORY)
     resolved = [
         provenance.resolve(e["repository"], e["select"], e.get("release_tag_pattern"), e.get("release_url_template"))
         for e in plan["implementation"]

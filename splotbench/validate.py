@@ -10,7 +10,7 @@ import stat
 import sys
 from pathlib import Path
 
-from . import bundle, schema
+from . import bundle, plan, schema
 from .util import EXIT_FAILURE, EXIT_PREREQUISITE, BenchError, run
 
 MAX_PUBLISHED_FILE_BYTES = 50 * 1024 * 1024  # a file in Git; the hosting limit is 100 MB
@@ -222,8 +222,18 @@ def _validate(args: argparse.Namespace) -> int:
         if problems:
             failed = True
         else:
-            print(f"valid: {path}")
+            print(f"valid: {path}{_lock_note(path)}")
     return EXIT_FAILURE if failed else 0
+
+
+def _lock_note(path: Path) -> str:
+    """For a valid lock file: its digest and campaign id, so nobody has to read them from the file."""
+    if path.is_dir() or not path.name.endswith(".json"):
+        return ""
+    document = schema.loads(path.read_bytes())
+    if not isinstance(document, dict) or document.get("schema") != "splotbench.lock/1":
+        return ""
+    return f" (lock {document['lock_digest']}, campaign {plan.campaign_id(document)})"
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:

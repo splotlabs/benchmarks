@@ -11,6 +11,7 @@ from pathlib import Path
 from helpers import git, harness_copy, isolate_git, make_repo, restore_git
 from splotbench import schema
 from splotbench.provenance import (
+    check_harness,
     binary_identity,
     build_id,
     build_origin,
@@ -258,6 +259,30 @@ class ResolveTest(unittest.TestCase):
         self.assertEqual(caught.exception.exit_code, 3)
         with self.assertRaises(BenchError):
             resolve(str(self.upstream), "main", None, None)
+
+
+class HarnessCheckTest(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.upstream = make_repo(self.root / "upstream", {"bench": b"synthetic harness\n"})
+        self.local = self.root / "local"
+        git(self.root, "clone", "-q", self.upstream.as_uri(), str(self.local))
+
+    def test_pushed_clean_commit_passes(self):
+        check_harness(snapshot(self.local), self.upstream.as_uri())
+
+    def test_local_commit_that_the_upstream_lacks_is_refused(self):
+        (self.local / "bench").write_text("synthetic local change\n")
+        git(self.local, "-c", "user.name=Synthetic Test", "-c", "user.email=synthetic@example.invalid", "commit", "-q", "-am", "local")
+        with self.assertRaisesRegex(BenchError, "cannot be fetched from .*: a second host could not check out this harness"):
+            check_harness(snapshot(self.local), self.upstream.as_uri())
+
+    def test_modified_checkout_is_refused(self):
+        (self.local / "bench").write_text("synthetic edit\n")
+        with self.assertRaisesRegex(BenchError, "not a clean Git commit"):
+            check_harness(snapshot(self.local), self.upstream.as_uri())
 
 
 class IdentityClassTest(unittest.TestCase):

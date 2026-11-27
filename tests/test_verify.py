@@ -163,10 +163,14 @@ class VerifyTest(unittest.TestCase):
             [
                 "ok: fixture-a fixture-ok threads=1",
                 "incorrect: fixture-a fixture-wrong threads=1 (output sha256 differs from the reference)",
+                "checks: 1 ok, 1 incorrect, 0 unsupported, 0 timeout, 0 error",
             ],
         )
         done = bench(ROOT, *args, "--case", "fixture-ok")
-        self.assertEqual((done.returncode, done.stdout), (0, "ok: fixture-a fixture-ok threads=1\n"))
+        self.assertEqual(
+            (done.returncode, done.stdout),
+            (0, "ok: fixture-a fixture-ok threads=1\nchecks: 1 ok, 0 incorrect, 0 unsupported, 0 timeout, 0 error\n"),
+        )
 
 
 

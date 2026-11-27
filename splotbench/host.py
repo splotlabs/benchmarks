@@ -203,8 +203,32 @@ def host_document(machine_id: str, facts: dict) -> dict:
 # --- host lock ------------------------------------------------------------------
 
 
+def _alive(pid: str) -> bool:
+    if not pid.isdigit():
+        return False
+    try:
+        os.kill(int(pid), 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        pass
+    return True
+
+
+def held_message(path: Path, holder: str) -> str:
+    """Name the holder of the host lock: the harness, or a decoder that a harness left running."""
+    if _alive(holder):
+        return f"another harness invocation holds {path} (process {holder}). Wait until it ends, then run the command again."
+    return (
+        f"{path} is held, but harness process {holder} has ended: a decoder process that it started still runs and "
+        "keeps the lock. Find it with `ps -A -o pid,pgid,command`, stop its process group, then run the command again."
+    )
+
+
 class HostLock:
-    """`W/host.lock`: one harness run at a time. The kernel releases the lock when the process ends."""
+    """`W/host.lock`: one harness run at a time. The kernel releases the lock when the last process
+    that has it open ends; `bench run` and `bench verify` pass it to each decoder, so an orphaned
+    decoder keeps it."""
 
     def __init__(self, work: Path) -> None:
         self.path = Path(work) / LOCK_NAME
@@ -218,10 +242,7 @@ class HostLock:
         except BlockingIOError:
             holder = os.read(descriptor, 64).decode("utf-8", "replace").strip() or "unknown"
             os.close(descriptor)
-            raise BenchError(
-                f"another harness invocation holds {self.path} (process {holder}). "
-                "Wait until it ends, then run the command again."
-            ) from None
+            raise BenchError(held_message(self.path, holder)) from None
         os.ftruncate(descriptor, 0)
         os.write(descriptor, f"{os.getpid()}\n".encode())
         self.descriptor = descriptor
