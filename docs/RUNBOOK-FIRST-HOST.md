@@ -171,6 +171,11 @@ into your report. They give the build ids and the binary digests.
 
 ### 7. Measure (only on the owner's request)
 
+Before the first measurement of a campaign, do steps 1 to 6 on the second host too, with
+the same lock ([RUNBOOK-SECOND-HOST.md](RUNBOOK-SECOND-HOST.md), steps 1 to 4). A build
+recipe that fails there needs a harness fix, and a harness fix needs a new lock. If you
+find that after the first host measured, the first measurement is lost.
+
 Run this step only when the owner asked for the measurement. Close other work on the
 machine first. Keep the host on mains power and awake. Do not change any system setting.
 
