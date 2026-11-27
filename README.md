@@ -33,6 +33,8 @@ Run the commands from the repository root.
 ./bench validate PATH...  # check JSON and JSONL files, bundles and dataset directories
 ./bench assemble --lock LOCK.json BUNDLE... -o OUT [--select ROLE=RUN_ID] [--official]
                           # check bundles and write OUT/datasets/<dataset_id>/
+./bench publish DATASET_DIR [--dry-run] [--promote] [--allow-local]
+                          # manual, explicit upload to S3-compatible storage; see docs/PUBLISHING.md
 ```
 
 The data formats and identities are described in [docs/FORMATS.md](docs/FORMATS.md).
@@ -54,9 +56,9 @@ with Python 3.11 and 3.14.
 | Path | Contents |
 | --- | --- |
 | `bench` | Entry script. |
-| `splotbench/` | The harness package. `cli.py` registers one parser per command module. `schema.py` validates, `provenance.py` records source, release and binary identity, `bundle.py` writes and reads bundles, `assemble.py` checks bundles and builds datasets. |
+| `splotbench/` | The harness package. `cli.py` registers one parser per command module. `schema.py` validates, `provenance.py` records source, release and binary identity, `bundle.py` writes and reads bundles, `assemble.py` checks bundles and builds datasets, `publish.py` uploads a dataset on explicit command. |
 | `schemas/` | JSON Schema files: the source of truth for every data format. |
-| `docs/` | Format documentation. |
+| `docs/` | Format documentation and the publishing procedure. |
 | `tests/` | Unit tests and synthetic fixtures (`tests/fixtures/`). |
 | `.github/workflows/` | CI: unit tests only. No benchmark runs, schedules or publication. |
 
