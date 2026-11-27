@@ -19,7 +19,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from . import adapters, build, bundle, provenance, schema
+from . import adapters, build, bundle, corpus, provenance, schema
 from .util import EXIT_FAILURE, EXIT_PREREQUISITE, BenchError, canonical_json, sha256_file
 
 CHUNK = 1 << 20
@@ -36,11 +36,6 @@ def frame_bytes(case: dict) -> int:
         x, y = CHROMA[case["chroma"]]
         samples += 2 * ((width + x) >> x) * ((height + y) >> y)
     return samples * (1 if case["bit_depth"] == 8 else 2)
-
-
-def input_path(work: Path, case: dict) -> Path:
-    suffix = Path(case["name"]).suffix or ".ivf"
-    return Path(work) / "corpus" / (case["input_sha256"].removeprefix("sha256:") + suffix)
 
 
 def _signal_group(pgid: int, number: int) -> None:
@@ -170,7 +165,7 @@ def run(
 
     inputs = {}
     for item in cases:
-        path = input_path(work, item)
+        path = corpus.cache_path(work, item)
         if not path.is_file():
             raise BenchError(f"input of case {item['id']} is missing at {path}. Run `bench prepare` first.", EXIT_PREREQUISITE)
         if sha256_file(path) != item["input_sha256"]:
