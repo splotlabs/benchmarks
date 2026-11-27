@@ -1,0 +1,21 @@
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Work and cache roots (keep `--work` directories outside the repository or here)
+/work/
+/cache/
+/.cache/
+
+# Downloaded corpora and decoded output
+*.obu
+*.ivf
+*.yuv
+
+# Builds, raw runs, bundles and generated datasets
+/build/
+/builds/
+/runs/
+/bundles/
+/datasets/
+*.tar.gz
