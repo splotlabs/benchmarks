@@ -183,7 +183,7 @@ incomplete. Origin is `synthetic` for a synthetic lock, `official` with `--offic
 writes nothing. An existing dataset directory with other content is refused; with the same
 content the command changes nothing. `coverage` (`roles_expected`, `roles_present`, `cells_expected`, `cells_ok`, `status_counts`) is one object, written
 identically into `manifest.json` and `summary.json`, so a viewer can say why a dataset is partial.
-`status_counts` counts the whole
+`status_counts` has all seven statuses (0 when none) and counts the whole
 expected matrix; the cells of a role without a run count as `not-run` there. `cells` holds
 only machines that have a run.
 
@@ -214,7 +214,7 @@ All values come from the measured attempts of an `ok` cell; warm-ups never count
 - `cpu_ns_median`, `peak_rss_bytes_median`: the median, or `null` when any attempt lacks the value.
 - `scaling_vs_1t`: `fps_median` over the `fps_median` of the 1-thread cell of the same machine, case and implementation; `null` without an `ok` 1-thread cell.
 - `speedups`: for every ordered pair of implementations and every machine, case and thread budget where both cells are `ok`: `fps_median` of the first over the second.
-- `aggregates`: per machine, threads, bit depth and ordered pair, the geometric mean of the per-case speedups (`null` when no case matches). `n_expected` is the number of cases of that bit depth, `n_matched` the cases where both cells are `ok`. `excluded` lists the other cases with the reason `<implementation>: <status>` for each implementation whose cell is not `ok`.
+- `aggregates`: per machine, threads, bit depth and ordered pair, the geometric mean of the per-case speedups (`null` when no case matches). `n_expected` is the number of cases of that bit depth, `n_matched` the cases where both cells are `ok`. `excluded` lists the other cases, one entry per implementation whose cell is not `ok` (ordered by case, then by implementation id): `case_id`, `implementation`, `status` of that cell and `reason` (`<implementation>: <status>`). When both cells of a pair are not `ok`, the case has two entries.
 
 ## How a result resolves its identity
 

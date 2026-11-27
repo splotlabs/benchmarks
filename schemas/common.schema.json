@@ -274,8 +274,9 @@
           "$ref": "common.schema.json#/$defs/count"
         },
         "status_counts": {
-          "description": "Cells of the whole expected matrix by status. Cells of a missing role count as not-run.",
+          "description": "Cells of the whole expected matrix by status. All seven statuses are present, 0 when none. Cells of a missing role count as not-run.",
           "type": "object",
+          "required": ["ok", "incorrect", "unsupported", "timeout", "error", "interrupted", "not-run"],
           "propertyNames": {
             "enum": [
               "ok",
