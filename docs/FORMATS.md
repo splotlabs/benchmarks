@@ -74,6 +74,11 @@ field for (`fourcc`, `profile`, `tiles`); the digest covers them. A stream witho
 `film_grain` key has `film_grain: null` in the lock. The streams are cached as
 `W/corpus/<input sha256 hex>.<ext>` and verified by size and SHA-256 on every use.
 
+The matrix is the list that `plan.enumerate_cells(lock, role=None)` returns, and
+`bench matrix` prints. Order: roles in lock order, then cases in suite order, then
+thread counts in list order, then implementations in lock order. Each cell gets
+`warmups` untimed and `repetitions` timed attempts (`plan.attempt_counts`).
+
 ## Source, release and build provenance
 
 `snapshot` describes a source directory: `vcs`, `commit`, `tree`, `dirty` and

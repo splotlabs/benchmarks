@@ -5,14 +5,17 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
+import tempfile
 import tomllib
 from pathlib import Path
 from typing import NamedTuple
 
 from . import __version__, corpus, provenance, schema
-from .util import BenchError, canonical_json, sha256_bytes, write_atomic
+from .util import BenchError, canonical_json, sha256_bytes
 
+MAX_TIMEOUT_S = 86400  # one day; the lock schema has the same maximum
 PLACEHOLDER_COMMIT = "0" * 40
 PLAN_KEYS = {
     "required": ("name", "origin", "suite", "warmups", "repetitions", "timeout_s", "order_seed",
@@ -41,7 +44,7 @@ def _table(value: object, where: str, keys: dict) -> dict:
     return value
 
 
-def _typed(table: dict, key: str, where: str, kind: type, minimum: int | None = None) -> None:
+def _typed(table: dict, key: str, where: str, kind: type, minimum: int | None = None, maximum: int | None = None) -> None:
     value = table.get(key)
     if value is None:
         return
@@ -49,6 +52,8 @@ def _typed(table: dict, key: str, where: str, kind: type, minimum: int | None = 
         raise BenchError(f"plan {where}{key}: expected {'an integer' if kind is int else 'a string'}, found {value!r}.")
     if minimum is not None and value < minimum:
         raise BenchError(f"plan {where}{key}: must be at least {minimum}, found {value}.")
+    if maximum is not None and value > maximum:
+        raise BenchError(f"plan {where}{key}: must be at most {maximum}, found {value}.")
 
 
 def parse_plan(path: Path) -> dict:
@@ -65,7 +70,7 @@ def parse_plan(path: Path) -> dict:
         _typed(plan, key, "", str)
     for key, minimum in (("warmups", 0), ("repetitions", 1), ("timeout_s", 1), ("order_seed", 0),
                          ("noise_max_range_permille", 0)):  # fmt: skip
-        _typed(plan, key, "", int, minimum)
+        _typed(plan, key, "", int, minimum, MAX_TIMEOUT_S if key == "timeout_s" else None)
     if not isinstance(plan["implementation"], list) or not plan["implementation"]:
         raise BenchError("plan implementation: expected a non-empty list of [[implementation]] tables.")
     ids = set()
@@ -84,6 +89,7 @@ def parse_plan(path: Path) -> dict:
                 f"plan {where} adapter: {entry['adapter']!r} does not fit origin {plan['origin']!r}. "
                 "Only a synthetic plan may use the 'fixture' adapter, and it may use only that adapter."
             )
+        corpus.check_url(entry["repository"], plan["origin"] == "synthetic", f"plan {where} repository")
     if not isinstance(plan["roles"], dict) or not plan["roles"]:
         raise BenchError("plan roles: expected at least one [roles.NAME] table.")
     for name, role in plan["roles"].items():
@@ -112,7 +118,9 @@ def campaign_id(document: dict) -> str:
 
 
 def _assemble(plan: dict, base: Path, harness: dict, resolved: list[dict] | None) -> dict:
-    manifest = corpus.load_manifest(base / plan["corpus"] if "corpus" in plan else corpus.DEFAULT_MANIFEST)
+    manifest = corpus.load_manifest(
+        base / plan["corpus"] if "corpus" in plan else corpus.DEFAULT_MANIFEST, synthetic=plan["origin"] == "synthetic"
+    )
     suites = corpus.load_suites(base / plan["suites"] if "suites" in plan else corpus.DEFAULT_SUITES)
     cases = corpus.suite_cases(manifest, suites, plan["suite"])
     implementations = []
@@ -241,6 +249,22 @@ def attempt_counts(lock: dict) -> dict[str, int]:
 # --- commands --------------------------------------------------------------------
 
 
+def write_new(path: Path, data: bytes) -> None:
+    """Create `path` with `data`. Fail when the file exists, also when it appeared a moment ago."""
+    descriptor, temporary = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(descriptor, "wb") as file:
+            file.write(data)
+            file.flush()
+            os.fsync(file.fileno())
+        try:
+            os.link(temporary, path)  # never replaces an existing file
+        except FileExistsError:
+            raise BenchError(f"{path} exists. Choose another -o path; a lock is never overwritten.") from None
+    finally:
+        os.unlink(temporary)
+
+
 def _lock(args: argparse.Namespace) -> int:
     if args.output.exists():
         raise BenchError(f"{args.output} exists. Choose another -o path; a lock is never overwritten.")
@@ -250,7 +274,7 @@ def _lock(args: argparse.Namespace) -> int:
     if args.output.exists():
         raise BenchError(f"{args.output} exists. Choose another -o path; a lock is never overwritten.")
     text = json.dumps(document, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
-    write_atomic(args.output, text.encode("utf-8"))
+    write_new(args.output, text.encode("utf-8"))
     snapshot = body["harness"]["snapshot"]
     print(f"campaign {campaign_id(document)}")
     print(f"digest {document['lock_digest']}")

@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Tests for the campaign plan, the lock, the matrix and the real corpus files. No network."""
 
+import argparse
 import copy
 import hashlib
 import json
@@ -10,6 +11,7 @@ import tempfile
 import tomllib
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from helpers import ROOT, bench, git, isolate_git, restore_git
 from splotbench import corpus, plan, schema
@@ -277,6 +279,69 @@ class MatrixTest(TempTest):
         self.assertEqual(bench(ROOT, "matrix", "--lock", str(path), "--role", "nope").returncode, 2)
 
 
+class SchemeAndLimitsTest(TempTest):
+    def test_standard_plan_refuses_file_urls(self):
+        path = make_plan(self.temporary / "c", replace={'origin = "synthetic"': 'origin = "standard"', 'adapter = "fixture"': 'adapter = "splot"'})
+        with self.assertRaises(BenchError) as raised:
+            plan.build_lock(path, harness=HARNESS)  # the repositories are file: URLs
+        self.assertIn("repository", str(raised.exception))
+        self.assertIn("https", str(raised.exception))
+
+    def test_standard_manifest_refuses_file_urls_and_mirrors(self):
+        make_plan(self.temporary / "c")
+        with self.assertRaises(BenchError) as raised:
+            corpus.load_manifest(self.temporary / "c" / "corpus.toml")
+        self.assertIn("https", str(raised.exception))
+        self.assertEqual(len(corpus.load_manifest(self.temporary / "c" / "corpus.toml", synthetic=True)["case"]), 2)
+        path = self.temporary / "https.toml"
+        text = (self.temporary / "c" / "corpus.toml").read_text().replace("file://", "https://example.invalid")
+        path.write_text(text.replace('frames = 2', 'frames = 2\nmirrors = ["file:///x"]', 1))
+        with self.assertRaises(BenchError) as raised:
+            corpus.load_manifest(path)
+        self.assertIn("file:///x", str(raised.exception))
+
+    def test_timeout_has_an_upper_bound_in_plan_and_schema(self):
+        path = make_plan(self.temporary / "c", replace={"timeout_s = 60": "timeout_s = 86400"})
+        lock = plan.build_lock(path, harness=HARNESS)
+        self.assertEqual(lock["lock"]["measurement"]["timeout_s"], 86400)
+        with self.assertRaises(BenchError) as raised:
+            plan.parse_plan(make_plan(self.temporary / "c", replace={"timeout_s = 60": "timeout_s = 86401"}))
+        self.assertIn("timeout_s", str(raised.exception))
+        lock["lock"]["measurement"]["timeout_s"] = 86401
+        self.assertTrue(any("timeout_s" in problem for problem in schema.validate(plan.lock_document(lock["lock"]))))
+
+    def test_suite_with_a_duplicate_id_is_refused(self):
+        make_plan(self.temporary / "c")
+        manifest = corpus.load_manifest(self.temporary / "c" / "corpus.toml", synthetic=True)
+        with self.assertRaises(BenchError) as raised:
+            corpus.suite_cases(manifest, {"quick": ["synthetic-8bit", "synthetic-8bit"]}, "quick")
+        self.assertIn("synthetic-8bit", str(raised.exception))
+
+    def test_suites_value_must_be_a_list_of_strings(self):
+        for text in ('quick = "synthetic-8bit"\n', "quick = [1, 2]\n"):
+            path = self.temporary / "suites.toml"
+            path.write_text(text)
+            with self.assertRaises(BenchError) as raised:
+                corpus.load_suites(path)
+            self.assertIn("quick", str(raised.exception))
+
+    def test_output_file_that_appears_late_is_not_replaced(self):
+        path = make_plan(self.temporary / "c")
+        output = self.temporary / "lock.json"
+        real = plan.build_lock
+
+        def late(*args, **kwargs):
+            document = real(*args, **kwargs)
+            output.write_text("someone else's file")  # created after the first exists-check
+            return document
+
+        arguments = argparse.Namespace(plan=path, output=output)
+        with mock.patch.object(plan, "build_lock", late), self.assertRaises(BenchError):
+            plan._lock(arguments)
+        self.assertEqual(output.read_text(), "someone else's file")
+        self.assertEqual([p.name for p in self.temporary.iterdir() if p.name.endswith(".tmp")], [])
+
+
 class RealCorpusTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -329,6 +394,14 @@ class RealCorpusTest(unittest.TestCase):
         self.assertTrue(pattern.fullmatch("v1.0.0"))
         for tag in ("research-v9.0.0", "research-v7.0.0-rc1", "v1.0.0-rc1"):
             self.assertIsNone(pattern.fullmatch(tag))
+
+    def test_corpus_digest_is_pinned(self):
+        # An accidental edit of corpus/ewouth-av2.toml fails here. An intended corpus change
+        # (a new import) must update this digest, and every lock made before it keeps the old one.
+        self.assertEqual(
+            corpus.manifest_digest(self.manifest),
+            "sha256:967cd3500a1c3caeadb1313851a4e898f8bff96f500d3093625c1e6dd66226c0",
+        )
 
     def test_corpus_digest_changes_with_a_stream_fact(self):
         changed = copy.deepcopy(self.manifest)
