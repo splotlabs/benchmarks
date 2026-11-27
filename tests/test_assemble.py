@@ -606,6 +606,9 @@ class CompletenessTest(Base):
         self.assertFalse(manifest["complete"])
         self.assertEqual(manifest["coverage"]["roles_present"], ["arm64"])
         self.assertEqual(manifest["coverage"]["status_counts"]["not-run"], 12)
+        summary = self.summary(target)
+        self.assertEqual(summary["coverage"], manifest["coverage"])  # one object in both files
+        self.assertEqual(summary["coverage"]["roles_present"], ["arm64"])
         self.assertEqual(validate.problems_for(target), [])
 
     def test_interrupted_run_has_interrupted_cells(self):

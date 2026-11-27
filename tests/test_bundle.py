@@ -352,6 +352,17 @@ class DatasetAndCliTest(unittest.TestCase):
         self.assertIn("summary.json: dataset_id 'ds-0000000000000000' differs from manifest.json", done.stderr)
         self.assertIn("summary.json: sha256 or size differs from manifest.json files", done.stderr)
 
+    def test_dataset_with_different_coverage_in_summary_and_manifest(self):
+        summary = json.loads((self.dataset / "summary.json").read_text())
+        summary["coverage"]["cells_ok"] += 1
+        (self.dataset / "summary.json").write_text(json.dumps(summary))
+        files = {p.relative_to(self.dataset).as_posix(): p.read_bytes() for p in self.dataset.rglob("*")
+                 if p.is_file() and p.name != "SHA256SUMS"}
+        (self.dataset / "SHA256SUMS").write_bytes(bundle.checksums(files))
+        done = bench(ROOT, "validate", str(self.dataset))
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("summary.json: coverage", done.stderr)
+
     def test_dataset_manifest_that_is_an_array(self):
         (self.dataset / "manifest.json").write_text("[]")
         files = {p.relative_to(self.dataset).as_posix(): p.read_bytes() for p in self.dataset.rglob("*")

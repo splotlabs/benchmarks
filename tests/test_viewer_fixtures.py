@@ -113,6 +113,9 @@ class ViewerFixturesTest(unittest.TestCase):
         manifest = json.loads((self.main / self.index["datasets"][3]["path"] / "manifest.json").read_text())
         self.assertEqual(manifest["coverage"]["roles_present"], ["x86-64"])
         self.assertGreater(manifest["coverage"]["status_counts"]["not-run"], 0)
+        self.assertEqual(partial["coverage"], manifest["coverage"])
+        self.assertLess(len(partial["coverage"]["roles_present"]), len(partial["coverage"]["roles_expected"]))
+        self.assertGreater(partial["coverage"]["status_counts"]["not-run"], 0)
 
     def test_no_real_decoder_name_outside_harness_identifiers(self):
         texts = {}

@@ -483,6 +483,10 @@ def assemble(
         for i in selected for b in (i.builds[x] for x in ids if x in i.builds)
     ]  # fmt: skip
     measurement = lock["measurement"]
+    coverage = {  # one object, written into the summary and the manifest
+        "roles_expected": sorted(lock["roles"]), "roles_present": sorted(present),
+        "cells_expected": len(plan.enumerate_cells(lock_doc)), "cells_ok": counts.get("ok", 0), "status_counts": counts,
+    }  # fmt: skip
     summary = {
         "schema": "splotbench.summary/1", "dataset_id": dataset_id, "campaign_id": campaign_id, "name": lock["name"],
         "lock_digest": lock_doc["lock_digest"], "origin": origin, "complete": complete, "workload": {"kind": "decode"},
@@ -493,7 +497,7 @@ def assemble(
             "repetitions": measurement["repetitions"], "timeout_s": measurement["timeout_s"],
             "noise_max_range_permille": measurement["noise_max_range_permille"], "build_policy": lock["build_policy"],
         },
-        "aggregation": {"version": AGGREGATION, "harness": harness},
+        "aggregation": {"version": AGGREGATION, "harness": harness}, "coverage": coverage,
         "corpus": {k: lock["corpus"][k] for k in ("id", "digest", "source", "oracle")},
         "suite": {"id": lock["suite"]["id"], "cases_expected": len(cases)},
         "metrics": METRICS, "machines": machines, "implementations": implementations, "builds": builds,
@@ -522,11 +526,7 @@ def assemble(
         "lock_digest": lock_doc["lock_digest"], "origin": origin, "complete": complete,
         "aggregation": {"version": AGGREGATION, "harness": harness},
         "runs": [run_entry(i) for i in selected],
-        "coverage": {
-            "roles_expected": sorted(lock["roles"]), "roles_present": sorted(present),
-            "cells_expected": len(plan.enumerate_cells(lock_doc)),
-            "cells_ok": counts.get("ok", 0), "status_counts": counts,
-        },
+        "coverage": coverage,
         "files": [sized(path, data) for path, data in sorted(files.items())],
     }  # fmt: skip
     if excluded:
