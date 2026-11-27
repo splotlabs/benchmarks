@@ -1,0 +1,1616 @@
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+
+# Pinned import of the public AV2 conformance corpus, 88 streams. The stream bytes are
+# not in this repository. The harness downloads them from the publisher and checks size
+# and SHA-256 (`bench prepare`). Edit this file only by a new import (corpus/README.md).
+#
+# Film grain: the sequence header of all 88 streams allows film grain. Whether the
+# frames apply it is not known. A stream has no `film_grain` key, and the lock records
+# `film_grain: null`. TOML has no null value.
+
+schema_version = 1
+id = "ewouth-av2"
+source = "https://github.com/EwoutH/AV2"
+source_revision = "6b5210a15d015421ada90da846f4660745583a21"
+encoder_revision = "01803db6afa5a0616702a3814fc5934ab9e99adf"
+terms_note = "The source states no licence. The streams are AVM encodes of the AOM common-test-conditions clips. The harness downloads them from the publisher and never redistributes them."
+
+[imported_from]
+repository = "https://github.com/splotlabs/splot"
+commit = "7175b506f4072aebd2e67517d5a8e44d9a9060e0"
+path = "tests/conformance/ewouth-av2.toml"
+sha256 = "sha256:c2f9b06db2e09386bd408836bd5b34e34fad3f3c1e2d765e94c769cfde9f0006"
+
+[oracle]
+convention = "avmdec-rawvideo-sha256"
+command = "avmdec --rawvideo --summary --threads=1 -o OUTPUT INPUT"
+hash = "SHA-256 of the whole avmdec --rawvideo output"
+samples_avm_revision = "3efe9fa8edadf5d1cbbf92e02b4ac8c3582c1e03"
+samples_avm_version = "1.0.0-63-g3efe9fa8e"
+hd_release = "hd-streams-2026-10"
+hd_avm_revision = "9c72cb56a7814da244eadbe48019844f491d6b8c"
+description = "avmdec 3efe9fa8edadf5d1cbbf92e02b4ac8c3582c1e03 for the streams in the source samples directory and avmdec 9c72cb56a7814da244eadbe48019844f491d6b8c for release hd-streams-2026-10; reference is the SHA-256 of the whole avmdec --rawvideo output"
+
+[[case]]
+id = "aerial3200-1920x1080-5994-10bit-420-qp135-551f"
+name = "Aerial3200_1920x1080_5994_10bit_420_qp135_551f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Aerial3200_1920x1080_5994_10bit_420_qp135_551f.ivf"
+input_sha256 = "sha256:a1e1f8779f9a269998d4e854d0a097907d89ed150b32674258908f5fe0a4596e"
+bytes = 4239629
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 551
+reference_sha256 = "sha256:fe97cf4fd89fd3544033ecaf95d4cf42aeddc3e02277597456451a69e575e532"
+raw_bytes = 3427660800
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "artistic-concert-1920x1080-25fps-qp135-130f"
+name = "Artistic_Concert_1920x1080_25fps_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Artistic_Concert_1920x1080_25fps_qp135_130f.ivf"
+input_sha256 = "sha256:6cc24b29b7f77504252d45cdc040f100f41934683ad5ab5b4b7caf9231948bf6"
+bytes = 3954929
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:2b03fa7fcd024180de1ce39a43db040c8072f7ae975c011c6bfe9e37cdc431e7"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "artistic-intro-1920x1080-2997fps-qp135-130f"
+name = "Artistic_Intro_1920x1080_2997fps_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Artistic_Intro_1920x1080_2997fps_qp135_130f.ivf"
+input_sha256 = "sha256:05a1d20e82220a67ed466a76d8543e6aa21fd098a3368cabf075716a4789d903"
+bytes = 1910633
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:f869ae64a5a760d305588da99c6be8b7839e678d1e68bf6ce823f75a620614b0"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "bigbuckbunnystudio1-1920x1080-60fps-10bit-420-020-0149-screen-qp135-130f"
+name = "BigBuckBunnyStudio1_1920x1080_60fps_10bit_420_020_0149_screen_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/BigBuckBunnyStudio1_1920x1080_60fps_10bit_420_020_0149_screen_qp135_130f.ivf"
+input_sha256 = "sha256:543f72752202cd1eef6f534d32383660edefcd49a07b77d6e8039fbc4c80cefb"
+bytes = 662032
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:9f6d8775e57c41c5bd1c5e1b14c09d25518bcb584d03340f128212b0848bdf0a"
+raw_bytes = 808704000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "bluesky-360p25-v2-qp110-130f"
+name = "BlueSky_360p25_v2_qp110_130f.ivf"
+url = "https://raw.githubusercontent.com/EwoutH/AV2/6b5210a15d015421ada90da846f4660745583a21/samples/BlueSky_360p25_v2_qp110_130f.ivf"
+input_sha256 = "sha256:f7a0b3e33f4847fcd38782f4d1786b8f02382f915e65d59b36286982b628fabb"
+bytes = 487979
+fourcc = "AV02"
+profile = 0
+width = 640
+height = 360
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:b769e0296e01f0f757268f809b3097325145666886fc5a880bf8f3b024e6b49c"
+raw_bytes = 44928000
+source_note = "samples at source revision 6b5210a15d01; reference from avmdec 3efe9fa8edad; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "bluesky-360p25-v2-qp160-130f"
+name = "BlueSky_360p25_v2_qp160_130f.ivf"
+url = "https://raw.githubusercontent.com/EwoutH/AV2/6b5210a15d015421ada90da846f4660745583a21/samples/BlueSky_360p25_v2_qp160_130f.ivf"
+input_sha256 = "sha256:05a113f0c2719530b8e50ad907d4cbe737985adf42724dea625e48fd478357ab"
+bytes = 114797
+fourcc = "AV02"
+profile = 0
+width = 640
+height = 360
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:4af10016b4e419f5e05a568f1beae014510a3a47029e9769bab5f05e16c4b24b"
+raw_bytes = 44928000
+source_note = "samples at source revision 6b5210a15d01; reference from avmdec 3efe9fa8edad; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "bluesky-360p25-v2-qp210-130f"
+name = "BlueSky_360p25_v2_qp210_130f.ivf"
+url = "https://raw.githubusercontent.com/EwoutH/AV2/6b5210a15d015421ada90da846f4660745583a21/samples/BlueSky_360p25_v2_qp210_130f.ivf"
+input_sha256 = "sha256:e50a76d63a1ef07185b48ef0d818d2424ba562474551b1a1011edcdb81f12e60"
+bytes = 95284
+fourcc = "AV02"
+profile = 0
+width = 640
+height = 360
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:d846c8def2bdae39ae8061df416180aab48b600e6bb4bec7e72ce15a55ea9162"
+raw_bytes = 44928000
+source_note = "samples at source revision 6b5210a15d01; reference from avmdec 3efe9fa8edad; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "boat-1920x1080-60fps-10bit-420-qp135-300f"
+name = "Boat_1920x1080_60fps_10bit_420_qp135_300f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Boat_1920x1080_60fps_10bit_420_qp135_300f.ivf"
+input_sha256 = "sha256:cf4ef7eec4be65059a55182df99aae369479410892a1a9152414f177133adbe0"
+bytes = 5801306
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 300
+reference_sha256 = "sha256:5cb8d1ed2d1862e06d10c6da9c00dfa8e4832f287ecf2dfd479b6f1878b68b71"
+raw_bytes = 1866240000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "cosmoscaterpillar-2048x858p24-hdr10-hdr10-qp135-130f"
+name = "CosmosCaterpillar_2048x858p24_hdr10_hdr10_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/CosmosCaterpillar_2048x858p24_hdr10_hdr10_qp135_130f.ivf"
+input_sha256 = "sha256:83bb77dd46069212f0c4021e1b6ecc6be634ac2315177fd9d61232bc1384f642"
+bytes = 404900
+fourcc = "AV02"
+profile = 0
+width = 2048
+height = 858
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:62dfb89db4799b1ea88e476a90d157fb2e4d5c2590760055391b3b3a7f095920"
+raw_bytes = 685301760
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "cosmostreetrunk-2048x858p24-hdr10-hdr10-qp135-130f"
+name = "CosmosTreeTrunk_2048x858p24_hdr10_hdr10_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/CosmosTreeTrunk_2048x858p24_hdr10_hdr10_qp135_130f.ivf"
+input_sha256 = "sha256:44939a0397621cc07675031f12ceec51692c3f80178da17aa13c00d987a0fe4f"
+bytes = 2330613
+fourcc = "AV02"
+profile = 0
+width = 2048
+height = 858
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:6291c769b8f9ca31b388be6c2244c6fe04f352bca79ab0ec0c2c0f57ce3b3be8"
+raw_bytes = 685301760
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "dota2-1920x1080-60-8bit-420-qp110-130f"
+name = "DOTA2_1920x1080_60_8bit_420_qp110_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/DOTA2_1920x1080_60_8bit_420_qp110_130f.ivf"
+input_sha256 = "sha256:3ed2cb91cf47787e3bc0efb7f04cde5627f29be45ae2cc68a762a1d31234a8d6"
+bytes = 4635741
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:f75bd17d8b1a2ca2a6a022dbfc79b1376427c5395a0ac8a8e047e96a00151ed9"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "dota2-1920x1080-60-8bit-420-qp135-130f"
+name = "DOTA2_1920x1080_60_8bit_420_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/DOTA2_1920x1080_60_8bit_420_qp135_130f.ivf"
+input_sha256 = "sha256:dd3d7c28e1e5ac635c1c1891e8d0b0e773bab8736d2a7379f137571cc95e606d"
+bytes = 2177342
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:046e880c2206b21946b5daa4217aa700a0b9be6544368bd112d04d4975a999f8"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "debugging-1920x1080-30fps-8bit-420-screen-qp135-130f"
+name = "Debugging_1920x1080_30fps_8bit_420_screen_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Debugging_1920x1080_30fps_8bit_420_screen_qp135_130f.ivf"
+input_sha256 = "sha256:d76d230e61f8de0333ee0ec63c370f301341a22606e4c98950910eb950038810"
+bytes = 230093
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:ffca6d10305367a31080b00dc7c2f1539127109ab71d4594561274e0b4bec11b"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "dinnerscenecropped-1920x1080-2997fps-10bit-420-qp135-130f"
+name = "DinnerSceneCropped_1920x1080_2997fps_10bit_420_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/DinnerSceneCropped_1920x1080_2997fps_10bit_420_qp135_130f.ivf"
+input_sha256 = "sha256:3a7f31cf7a360e7c41332bd536cd62178afea7ecd4404210e22d277a69d17ee7"
+bytes = 115349
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:e85a8141f9fae5c8710e66c922c4fd2d1925d5c219498331ce167713776a538b"
+raw_bytes = 808704000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "eurotrucksimulator2-1920x1080p60-qp110-130f"
+name = "EuroTruckSimulator2_1920x1080p60_qp110_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/EuroTruckSimulator2_1920x1080p60_qp110_130f.ivf"
+input_sha256 = "sha256:de0d81428a4399a9f9140fe4f25fab9023458734361b8fbb0000967e2b67d407"
+bytes = 17415899
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:540f7d96ae8ee41531aa550c30cd9ef0ffefb3bccd3e7f62ea1c6e666437b5e7"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "eurotrucksimulator2-1920x1080p60-qp135-130f"
+name = "EuroTruckSimulator2_1920x1080p60_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/EuroTruckSimulator2_1920x1080p60_qp135_130f.ivf"
+input_sha256 = "sha256:78f5a63f0e36219979db3831028f27352e630097589b3e8b87c9b1fdead02103"
+bytes = 5044353
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:92190ecab61e0bd618f82dc349fd7f0f3db2ffe59ea404957a81206729875cf1"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "foodmarket-1920x1080-60fps-10bit-420-qp135-600f"
+name = "FoodMarket_1920x1080_60fps_10bit_420_qp135_600f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/FoodMarket_1920x1080_60fps_10bit_420_qp135_600f.ivf"
+input_sha256 = "sha256:a3f3335ff2de2b5ff446e6ab3551bcd6afd9c3026e9727ca1c85eed571ba0931"
+bytes = 7358494
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 600
+reference_sha256 = "sha256:049e11422d8cc6364daecbd7e0b14e0695b11e73a4c73dd83b28b7f387faef89"
+raw_bytes = 3732480000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "fourpeople-480x270-60-qp110-130f"
+name = "FourPeople_480x270_60_qp110_130f.ivf"
+url = "https://raw.githubusercontent.com/EwoutH/AV2/6b5210a15d015421ada90da846f4660745583a21/samples/FourPeople_480x270_60_qp110_130f.ivf"
+input_sha256 = "sha256:2786f5a93cba921d3bd1781aba34aad5ebed89f53ca123f2e65a3824be42cdf5"
+bytes = 149913
+fourcc = "AV02"
+profile = 0
+width = 480
+height = 270
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:1ba31f4b78e2f1a78b72e7be09d4d25e37ecfeb51a7c3f96b300eec652db5230"
+raw_bytes = 25272000
+source_note = "samples at source revision 6b5210a15d01; reference from avmdec 3efe9fa8edad; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "fourpeople-480x270-60-qp160-130f"
+name = "FourPeople_480x270_60_qp160_130f.ivf"
+url = "https://raw.githubusercontent.com/EwoutH/AV2/6b5210a15d015421ada90da846f4660745583a21/samples/FourPeople_480x270_60_qp160_130f.ivf"
+input_sha256 = "sha256:946efcd63c61418c8eef0b52f2def391b23bdaf35b3f79ce6ab952941ca36445"
+bytes = 54820
+fourcc = "AV02"
+profile = 0
+width = 480
+height = 270
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:a0ee99cf7ac17a54d548c86bdcf802daf5f1f72725fa8de6528c6fed2c9dfcbe"
+raw_bytes = 25272000
+source_note = "samples at source revision 6b5210a15d01; reference from avmdec 3efe9fa8edad; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "fourpeople-480x270-60-qp210-130f"
+name = "FourPeople_480x270_60_qp210_130f.ivf"
+url = "https://raw.githubusercontent.com/EwoutH/AV2/6b5210a15d015421ada90da846f4660745583a21/samples/FourPeople_480x270_60_qp210_130f.ivf"
+input_sha256 = "sha256:e7fd3676044bd69a9b96e8702ffac88cb2e5f7735e131a659f522812c008a0f5"
+bytes = 35244
+fourcc = "AV02"
+profile = 0
+width = 480
+height = 270
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:52c5d84c5a7de70cb346500fdee24764f5d1460f9915cfbc7056ac713946c130"
+raw_bytes = 25272000
+source_note = "samples at source revision 6b5210a15d01; reference from avmdec 3efe9fa8edad; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "glasshalf-1920x1080p-24p-8bit-420-qp110-130f"
+name = "GlassHalf_1920x1080p_24p_8bit_420_qp110_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/GlassHalf_1920x1080p_24p_8bit_420_qp110_130f.ivf"
+input_sha256 = "sha256:79d063a176dab19bf5ea5ef48137639a62c1d365d18565f448354fa71a67744f"
+bytes = 3617886
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:2d35f8f18e30eebb127c0fefc13a5a1415f0a97da1a1bc68dd6716a0843a6571"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "glasshalf-1920x1080p-24p-8bit-420-qp135-130f"
+name = "GlassHalf_1920x1080p_24p_8bit_420_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/GlassHalf_1920x1080p_24p_8bit_420_qp135_130f.ivf"
+input_sha256 = "sha256:bdffd4ce09dc2aebbfc9c83eba9f14f44f353296a2fb7669f86a2592b9f4461e"
+bytes = 2009761
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:f3c67f9c4834697dd61873240e43e6072b702f2995aa3ff34b776e8d3207da26"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "johnny-1280x720-60-qp135-600f"
+name = "Johnny_1280x720_60_qp135_600f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Johnny_1280x720_60_qp135_600f.ivf"
+input_sha256 = "sha256:0ff30740fc9e9f2d51b60391b793e03473abe71d2736c4aaead4227514c4a701"
+bytes = 479017
+fourcc = "AV02"
+profile = 0
+width = 1280
+height = 720
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 600
+reference_sha256 = "sha256:61dd8954215544cd7204eab02ce024c7e6153e31cd0255cfb3e087a4ded2a21e"
+raw_bytes = 829440000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "kristenandsara-1280x720-60-qp135-600f"
+name = "KristenAndSara_1280x720_60_qp135_600f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/KristenAndSara_1280x720_60_qp135_600f.ivf"
+input_sha256 = "sha256:e91b77f4cf4d13c65c0a2af64b8cfb817186daf070e573fcc103213fd000157c"
+bytes = 716291
+fourcc = "AV02"
+profile = 0
+width = 1280
+height = 720
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 600
+reference_sha256 = "sha256:eae0495c5201d5c1e8030e8142693e5a5a8db9fd1dc8ca03043f82bc61be9223"
+raw_bytes = 829440000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "kristenandsara-1280x720-60-qp160-240f"
+name = "KristenAndSara_1280x720_60_qp160_240f.ivf"
+url = "https://raw.githubusercontent.com/EwoutH/AV2/6b5210a15d015421ada90da846f4660745583a21/samples/KristenAndSara_1280x720_60_qp160_240f.ivf"
+input_sha256 = "sha256:137b5992ab7883d0974441f5c33eb324658fcdae755a66764d14077cbd9b47e6"
+bytes = 181753
+fourcc = "AV02"
+profile = 0
+width = 1280
+height = 720
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 240
+reference_sha256 = "sha256:1c55125767bbfb85812e6ac22c3ab22f63c54d55cdc4a9f43dd894d559447084"
+raw_bytes = 331776000
+source_note = "samples at source revision 6b5210a15d01; reference from avmdec 3efe9fa8edad; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "life-1080p30-qp110-130f"
+name = "Life_1080p30_qp110_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Life_1080p30_qp110_130f.ivf"
+input_sha256 = "sha256:0c61e7ab9defc75feda8697359836162c31f05a113b4b7c47710c0ad4fbb9a83"
+bytes = 3640103
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:735f2ae806d6c6559de65a1af4f4f083c960f7746c6f8f352b1c84671f153590"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "life-1080p30-qp135-130f"
+name = "Life_1080p30_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Life_1080p30_qp135_130f.ivf"
+input_sha256 = "sha256:270920080750f62e734df6b2ad79de9a89c39896fdb7894fc464ceca53aecf73"
+bytes = 1518525
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:8ab6037506f980d40067c8787cab08173907d5703dc225f5233dcbfebf7920aa"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "meridianshore-1920x1080-5994-hdr10-hdr10-qp135-130f"
+name = "MeridianShore_1920x1080_5994_hdr10_hdr10_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/MeridianShore_1920x1080_5994_hdr10_hdr10_qp135_130f.ivf"
+input_sha256 = "sha256:92435831fbcdee1458919cde1fa0acf155a2d383887e0ad54c772728f349d7af"
+bytes = 799732
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:73c83b873722b9e1c43fb2f0859a4e97347f5bb5aa4e17376b02c92a12c3b15d"
+raw_bytes = 808704000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "meridiantalk-1920x1080-5994-hdr10-hdr10-qp135-130f"
+name = "MeridianTalk_1920x1080_5994_hdr10_hdr10_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/MeridianTalk_1920x1080_5994_hdr10_hdr10_qp135_130f.ivf"
+input_sha256 = "sha256:a51110f11245e2f3b8299e2448aca1d428eb319a87a30ee2dcac22ca7a2240ea"
+bytes = 187704
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:0dcdffbc3c5ede9f87531519cdabf274de24650aa0c72a2f58cebb4d9a87dfb6"
+raw_bytes = 808704000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "meridian-talk-sdr-1080p-10bit-qp135-382f"
+name = "Meridian_talk_sdr_1080p_10bit_qp135_382f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Meridian_talk_sdr_1080p_10bit_qp135_382f.ivf"
+input_sha256 = "sha256:5b130d1b72a9fd70ccc6e7d0bd568d2a690c98ce6a003139dc3f9dce2320c3c5"
+bytes = 791463
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 382
+reference_sha256 = "sha256:6a89d829df8c0fee53bdfa4d4a886fdef94896b68844666c39f1549675a79a64"
+raw_bytes = 2376345600
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "missioncontrolclip1-1920x1080-60fps-10bit-420-0450-0579-screen-qp135-130f"
+name = "MissionControlClip1_1920x1080_60fps_10bit_420_0450_0579_screen_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/MissionControlClip1_1920x1080_60fps_10bit_420_0450_0579_screen_qp135_130f.ivf"
+input_sha256 = "sha256:4fa734f887e4c9324e93e2bdce90ca9c66774ee2690a14051f573aa11d635237"
+bytes = 1045621
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:f4c82b47170ac6eb70d1a717650aac1e05c3f760e1b49222185a5b951682da08"
+raw_bytes = 808704000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "missioncontrolclip3-1920x1080-60-420-screen-qp135-130f"
+name = "MissionControlClip3_1920x1080_60_420_screen_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/MissionControlClip3_1920x1080_60_420_screen_qp135_130f.ivf"
+input_sha256 = "sha256:615b5953caf6bc1821481bf5b525a4c3663ca2a97b188ea946db0c0f15745110"
+bytes = 593415
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:a1c2af3366b1ac1f647bdddc72eea2801d36ba4ca15399071598549156707969"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "mixedcoding-newsintroanchor-1280x720-2997fps-qp110-130f"
+name = "MixedCoding_NewsIntroAnchor_1280x720_2997fps_qp110_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/MixedCoding_NewsIntroAnchor_1280x720_2997fps_qp110_130f.ivf"
+input_sha256 = "sha256:0d033f1ef45da0738231f92fb593d4977c7b807fe96b7b9cf0023825d29b4498"
+bytes = 1200569
+fourcc = "AV02"
+profile = 0
+width = 1280
+height = 720
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:d7c4ff72b930c7d904c26003445df11949f7b36facc2bd3ecc27526a4d4878fd"
+raw_bytes = 179712000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "mixedcoding-newsintroanchor-1280x720-2997fps-qp135-130f"
+name = "MixedCoding_NewsIntroAnchor_1280x720_2997fps_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/MixedCoding_NewsIntroAnchor_1280x720_2997fps_qp135_130f.ivf"
+input_sha256 = "sha256:cd57741a9a3630068370fcb2e72325dd33f11ee5f2ec6f8a9dd83f2b77a72df8"
+bytes = 541627
+fourcc = "AV02"
+profile = 0
+width = 1280
+height = 720
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:ebfe0dd8189f6170a8172d01f20c650c178bcf4155b23c3c6c8072015de578ff"
+raw_bytes = 179712000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "mobiledevicescreensharing-screen-qp135-130f"
+name = "MobileDeviceScreenSharing_screen_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/MobileDeviceScreenSharing_screen_qp135_130f.ivf"
+input_sha256 = "sha256:eba27865543af70766810283ae37145db6dcf52a4888100c88047b7452de7bac"
+bytes = 136578
+fourcc = "AV02"
+profile = 0
+width = 1078
+height = 2220
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:cb930f46605d79f47b388309db8d23484fdb871f84c3a2cdbafc6188ff255501"
+raw_bytes = 466666200
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "motorcycle-1920x1080-30fps-8bit-qp135-130f"
+name = "Motorcycle_1920x1080_30fps_8bit_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Motorcycle_1920x1080_30fps_8bit_qp135_130f.ivf"
+input_sha256 = "sha256:a6cfd75c325c79637aa188ae1536a63b8529740a87e2ae5eebd14e0b5227cb28"
+bytes = 11855017
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:832f6765e2c013c69b5d257cc2110bf3dbf7fbb22acb0738f1b09578812c6a7f"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "mountainbike-1920x1080-30fps-8bit-qp135-130f"
+name = "MountainBike_1920x1080_30fps_8bit_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/MountainBike_1920x1080_30fps_8bit_qp135_130f.ivf"
+input_sha256 = "sha256:1230bd1ecfe9ec59f54e9aa2c78829603f4d246fb8c72b700dbd56ecc10f9db7"
+bytes = 11617577
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:8839321c3dac6014bf2e60956a4b15743f123849fa5abfa125fa0954cc8b9075"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "netflix-drivingpov-720p-60fps-10bit-420-qp135-600f"
+name = "Netflix_DrivingPOV_720p_60fps_10bit_420_qp135_600f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Netflix_DrivingPOV_720p_60fps_10bit_420_qp135_600f.ivf"
+input_sha256 = "sha256:603b6f7cd731563a1c76446bbeb9e4a83690ec5a38e0c9f4d7158df516a94183"
+bytes = 4453677
+fourcc = "AV02"
+profile = 0
+width = 1280
+height = 720
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 600
+reference_sha256 = "sha256:e86603b8e8bea2775456219f1f4ad62b5a5f03ba790821d16e88d7dc31c45783"
+raw_bytes = 1658880000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "netflix-drivingpov-720p-60fps-10bit-420-qp160-209f"
+name = "Netflix_DrivingPOV_720p_60fps_10bit_420_qp160_209f.ivf"
+url = "https://raw.githubusercontent.com/EwoutH/AV2/6b5210a15d015421ada90da846f4660745583a21/samples/Netflix_DrivingPOV_720p_60fps_10bit_420_qp160_209f.ivf"
+input_sha256 = "sha256:956ef5e69b096567d772b67dd2979693fdaa95d65fb470bb3780f3f162eb2c9d"
+bytes = 694427
+fourcc = "AV02"
+profile = 0
+width = 1280
+height = 720
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 209
+reference_sha256 = "sha256:48855c3ab5ec7f0ad64b5f442034535c25079e275ed3447c4bdf186727e552f4"
+raw_bytes = 577843200
+source_note = "samples at source revision 6b5210a15d01; reference from avmdec 3efe9fa8edad; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "netflix-rollercoaster-720p-60fps-10bit-420-qp135-599f"
+name = "Netflix_RollerCoaster_720p_60fps_10bit_420_qp135_599f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Netflix_RollerCoaster_720p_60fps_10bit_420_qp135_599f.ivf"
+input_sha256 = "sha256:03fe54ea715001ff60665aae451370f966011ab7be1847f3793823a41793c310"
+bytes = 2774915
+fourcc = "AV02"
+profile = 0
+width = 1280
+height = 720
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 599
+reference_sha256 = "sha256:da1f0a1b5f2b8b97f1844e8f86547d2e9a330bea0e8d5d7b389148ff0e89be33"
+raw_bytes = 1656115200
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "noise-animationcrayon-1920x1080-2398fps-qp135-130f"
+name = "Noise_AnimationCrayon_1920x1080_2398fps_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Noise_AnimationCrayon_1920x1080_2398fps_qp135_130f.ivf"
+input_sha256 = "sha256:f923a9b4cfd2bfc7e59f439e0b76463188960aeed2b4d6389c87cc86da772e9d"
+bytes = 914743
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:f2806ac107260b3dd96ef5718303d19ee1a8fb7bfeb5ac463f432790147388ac"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "noise-ocean-1920x1080-60fps-filmgrain-qp135-130f"
+name = "Noise_Ocean_1920x1080_60fps_filmgrain_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Noise_Ocean_1920x1080_60fps_filmgrain_qp135_130f.ivf"
+input_sha256 = "sha256:858a551b7544dd87424f2166772d2a1af8d324343d3a69089063e020377e99d3"
+bytes = 158461
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:06b6a20fda225a8796fa28cfebcc9527845eaedc5908b3829284d3dfe9f872fd"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "noise-ocean-1920x1080-60fps-qp110-130f"
+name = "Noise_Ocean_1920x1080_60fps_qp110_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Noise_Ocean_1920x1080_60fps_qp110_130f.ivf"
+input_sha256 = "sha256:0a5bc0d8d1e87e88f9bed7708fa01b7cba9bb69fb14dac1d33ff0b25c58dc6de"
+bytes = 2635107
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:6b2169a5c02db157a00ec97e84bb3d451263d43018a0bf9271cdeb6a704c3b5e"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "noise-ocean-1920x1080-60fps-qp135-130f"
+name = "Noise_Ocean_1920x1080_60fps_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Noise_Ocean_1920x1080_60fps_qp135_130f.ivf"
+input_sha256 = "sha256:e6617f91dcf60c8f547de40863bf1c3ed913c1f9ab8bd73c96b0d43dda3b28a7"
+bytes = 384082
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:7750b2c91ea27fab63a9a628bdaa340ea1078d8b003d321e942e1aeaab3580f6"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "noise-soccer-1920x1080-50fps-qp135-130f"
+name = "Noise_Soccer_1920x1080_50fps_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Noise_Soccer_1920x1080_50fps_qp135_130f.ivf"
+input_sha256 = "sha256:442f40d5dbcb53482df8b5002155556c9568a80d39a488efcaf178f4f4074962"
+bytes = 7209602
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:9b76c89d240727cdb276358088bd9a3aed8c502100ad94c18ec4ca54a9024fb6"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "ritualdance-1920x1080-60fps-10bit-420-qp135-600f"
+name = "RitualDance_1920x1080_60fps_10bit_420_qp135_600f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/RitualDance_1920x1080_60fps_10bit_420_qp135_600f.ivf"
+input_sha256 = "sha256:4a6b3f298483e9cc8c94fcc5b780f442a02bc1ce60f600606e412a302a9b9b87"
+bytes = 6508842
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 600
+reference_sha256 = "sha256:532ce2e6f02ca9e62ab51c36638d25f2c82a736cb9f568cbb35fbd6e23d0f75c"
+raw_bytes = 3732480000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "ritualdance-1920x1080-60fps-10bit-420-qp160-120f"
+name = "RitualDance_1920x1080_60fps_10bit_420_qp160_120f.ivf"
+url = "https://raw.githubusercontent.com/EwoutH/AV2/6b5210a15d015421ada90da846f4660745583a21/samples/RitualDance_1920x1080_60fps_10bit_420_qp160_120f.ivf"
+input_sha256 = "sha256:d55a99386094f17e97bef7239eec6d6fe3e564460b59d39dd94e14aa14200ae1"
+bytes = 522112
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 120
+reference_sha256 = "sha256:09d7150c5c24974f74c3c40b7d99966f68c8d74edeb06d1f7613b8e8c12b2977"
+raw_bytes = 746496000
+source_note = "samples at source revision 6b5210a15d01; reference from avmdec 3efe9fa8edad; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "starcraft-1080p60-qp110-130f"
+name = "STARCRAFT_1080p60_qp110_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/STARCRAFT_1080p60_qp110_130f.ivf"
+input_sha256 = "sha256:43db51a496bbd1b402bbf9063fd31f51e57efd9347bfc9d272860a69c259e38a"
+bytes = 2271187
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:07ff23cfc883da618026e0f428ea0690623b92e92ca0f3a1f78214dd6c9aaf4f"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "starcraft-1080p60-qp135-130f"
+name = "STARCRAFT_1080p60_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/STARCRAFT_1080p60_qp135_130f.ivf"
+input_sha256 = "sha256:a74b250005db70f72b88b77611ace15d99f987ea0a289a5119e50bc695c8aa64"
+bytes = 1075864
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:6f0c5ae85c1df2091f80942275516b07780b1bf4392133cf01f7836df02561cf"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "scenecomposition-1-screen-qp135-130f"
+name = "SceneComposition_1_screen_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/SceneComposition_1_screen_qp135_130f.ivf"
+input_sha256 = "sha256:7e0578ed6a79611f6fdea1a13321745ef2c2044802c726ebf451cc1a3355984d"
+bytes = 291300
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:e9ff20c28ed1f395b9e5ce0ca72a275353f9077efc64089b9cbfcf5d7c2f06df"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "scenecomposition-2-screen-qp135-130f"
+name = "SceneComposition_2_screen_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/SceneComposition_2_screen_qp135_130f.ivf"
+input_sha256 = "sha256:3d7761b9522a3542ec485fe58a4e5ea9277aefd365e7fa6537d5a99b4f46cddc"
+bytes = 202770
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:e558100e713eef2be544489376cca65f440beed6db820858b6367fe1c392e0b2"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "shaky-quad-1920x1080-30fps-globalmotion-qp135-130f"
+name = "Shaky_Quad_1920x1080_30fps_globalmotion_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Shaky_Quad_1920x1080_30fps_globalmotion_qp135_130f.ivf"
+input_sha256 = "sha256:3c8751ffa28877e5a0f8a7dcf0c2f98c9f73403a4f6ffa3fa12f7c6e829b31c1"
+bytes = 8546370
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:3f4985c69e980a0011807cc49d30ddec4dd56e9c607cf59de40c3ed9389d5144"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "shaky-walk-1920x1080-25fps-globalmotion-qp135-130f"
+name = "Shaky_Walk_1920x1080_25fps_globalmotion_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Shaky_Walk_1920x1080_25fps_globalmotion_qp135_130f.ivf"
+input_sha256 = "sha256:a5eba7ce5071948e1af13651c88c4529fae5d85ccfc16d00146a6c7a5c859c91"
+bytes = 5617533
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:5b842506c4ff13e960da234319ab8613ca23691a68d843ab477811eb8dc786ba"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "skater227-1920x1080-30fps-qp135-300f"
+name = "Skater227_1920x1080_30fps_qp135_300f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Skater227_1920x1080_30fps_qp135_300f.ivf"
+input_sha256 = "sha256:636645719d0cf48d8fd12693900a5c2d8147ca345c1b5c3dd3d2f1411e667be3"
+bytes = 1077982
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 300
+reference_sha256 = "sha256:fe88ca3f3ddc12c9f74fe13923434654df323e52985a86fd7224055ed1bc67f3"
+raw_bytes = 1866240000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "slides1-1920x1080-30fps-8bit-420-screen-qp135-130f"
+name = "Slides1_1920x1080_30fps_8bit_420_screen_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Slides1_1920x1080_30fps_8bit_420_screen_qp135_130f.ivf"
+input_sha256 = "sha256:7eabef9ca18bde9fc3cc095312a2da3e7f542774301be6e8850b36fa60bdd04a"
+bytes = 401463
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:aef14893feaa97f0bb04f8cf43adcddecfbbe804a6b0c26d664d868af78961ea"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "slides2r-1920x1080-30fps-8bit-420-screen-qp135-130f"
+name = "Slides2r_1920x1080_30fps_8bit_420_screen_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Slides2r_1920x1080_30fps_8bit_420_screen_qp135_130f.ivf"
+input_sha256 = "sha256:02846d9b493d24d3e48db8b436bf5b7b9a39a510188c4f64492f23294a1e663d"
+bytes = 603327
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:7c53bcf4eb8e4d61cbf5a1fad34de697ca16e863cf7a80caa63ac49c267d0ef3"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "sniper-1920x1080p-30fps-8bit-qp135-130f"
+name = "Sniper_1920x1080P_30fps_8bit_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Sniper_1920x1080P_30fps_8bit_qp135_130f.ivf"
+input_sha256 = "sha256:d27aa98cb7520e337f2e363e7b4ef33f99debd4a776cf87d4907cb7d7341d393"
+bytes = 13152246
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:cc5bfcc93c0267936260f465a0b429ed01f50d323d4f62d17cd57c7dcb8a1d98"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "sollevantedragons-1920x1080p24-hdr10-hdr10-qp135-130f"
+name = "SolLevanteDragons_1920x1080p24_hdr10_hdr10_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/SolLevanteDragons_1920x1080p24_hdr10_hdr10_qp135_130f.ivf"
+input_sha256 = "sha256:fafa3bda99f1ab249f466da46f8ea649af0d4442c60948771deea554dcd7890c"
+bytes = 984331
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:a54f82a34b4c7dd3beb58c5e81b11ef8c3634de22f8766639695fe75f7df8140"
+raw_bytes = 808704000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "sollevantedragons-sdr-1920x1080-24-10bit-qp135-130f"
+name = "SolLevanteDragons_sdr_1920x1080_24_10bit_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/SolLevanteDragons_sdr_1920x1080_24_10bit_qp135_130f.ivf"
+input_sha256 = "sha256:c08bca65d0f3961a717c7a17586864863816ebd7e3da4550e1a420c012be10dd"
+bytes = 1460217
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:7ce30ed8d3d97937b982f5fce0b02d86fb5ce954dc220fee946826a03be1c0a6"
+raw_bytes = 808704000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "sollevanteface-sdr-1920x1080-24-10bit-qp135-130f"
+name = "SolLevanteFace_sdr_1920x1080_24_10bit_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/SolLevanteFace_sdr_1920x1080_24_10bit_qp135_130f.ivf"
+input_sha256 = "sha256:332a6e9cf39eed3e7ae9be57c3f2b1e03b4187289206e82799809f454aab74db"
+bytes = 3988373
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:05e533617d85f4e861fb8d7e4ff5053657663470a6019ca6065cb475e341e671"
+raw_bytes = 808704000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "sparkstruck-2048x1080-5994-hdr10-hdr10-qp135-130f"
+name = "SparksTruck_2048x1080_5994_hdr10_hdr10_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/SparksTruck_2048x1080_5994_hdr10_hdr10_qp135_130f.ivf"
+input_sha256 = "sha256:229b115be7cef30d86dd0be838128260b1013bff7f38a9fd33d0eed3674d3fb5"
+bytes = 931231
+fourcc = "AV02"
+profile = 0
+width = 2048
+height = 1080
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:ff6fc59d0cd5d48f91d4e57d249de2e0ae90898b253619ee96e33e3c4bedd2ef"
+raw_bytes = 862617600
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "spreadsheet-1920x1080-30fps-8bit-420-130f-screen-qp135-130f"
+name = "Spreadsheet_1920x1080_30fps_8bit_420_130f_screen_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Spreadsheet_1920x1080_30fps_8bit_420_130f_screen_qp135_130f.ivf"
+input_sha256 = "sha256:e35309ea4a289e10000a7b10a376d7f73ca040745e1bad1bf7ae9da34faef246"
+bytes = 487482
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:9ed921d4cd3fa905aa08a467d38bd915caff05c6746ef772222049bcd02c47f6"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "toddlerfountain-1920x1080-2997fps-10bit-420-qp135-130f"
+name = "ToddlerFountain_1920x1080_2997fps_10bit_420_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/ToddlerFountain_1920x1080_2997fps_10bit_420_qp135_130f.ivf"
+input_sha256 = "sha256:c421d13fb87f25cfe761ef97ed0b69b2dae9b0cc171edac5638323f0d44166e6"
+bytes = 8549427
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:7c36818569f5b0ea4ac4e121f1a588ca603558229fae5243df7bb54be4bc4768"
+raw_bytes = 808704000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "treesandgrass-1920-1080-30fps-8bit-qp135-130f"
+name = "TreesAndGrass_1920_1080_30fps_8bit_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/TreesAndGrass_1920_1080_30fps_8bit_qp135_130f.ivf"
+input_sha256 = "sha256:fb3aa35e7d09e46dfcdfb4159fbf79e3c971f3e5f3272adaa4510579f24aa5ab"
+bytes = 6702179
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:8a20fb3952a8e7ba2e4012352f4c3f21e8e4fd9d1c0287e384962aa8cd334183"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "tunnelflag-1920x1080-60fps-10bit-420-qp135-600f"
+name = "TunnelFlag_1920x1080_60fps_10bit_420_qp135_600f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/TunnelFlag_1920x1080_60fps_10bit_420_qp135_600f.ivf"
+input_sha256 = "sha256:699486f5e04353810f9e577f1d5e0d36451d21bab5e472b3ca4384fe81e3cafc"
+bytes = 6745495
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 600
+reference_sha256 = "sha256:22d469371942b7d41bfe574d5019dd2fe1601ed35a8cc14560e81a236aa099b9"
+raw_bytes = 3732480000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "tunnelflag-1920x1080-60fps-10bit-420-qp160-73f"
+name = "TunnelFlag_1920x1080_60fps_10bit_420_qp160_73f.ivf"
+url = "https://raw.githubusercontent.com/EwoutH/AV2/6b5210a15d015421ada90da846f4660745583a21/samples/TunnelFlag_1920x1080_60fps_10bit_420_qp160_73f.ivf"
+input_sha256 = "sha256:8a1009b3ee174763a10acff1b6eb8d365889839f60d4e236fc4dba3db1de595c"
+bytes = 617742
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 10
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 73
+reference_sha256 = "sha256:69dee1a10c9fb26ef46b487ae311855cfd590f503b9a77ec95f85d54dfab9621"
+raw_bytes = 454118400
+source_note = "samples at source revision 6b5210a15d01; reference from avmdec 3efe9fa8edad; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "vertical-bayshore-270x480-2997-qp110-130f"
+name = "Vertical_Bayshore_270x480_2997_qp110_130f.ivf"
+url = "https://raw.githubusercontent.com/EwoutH/AV2/6b5210a15d015421ada90da846f4660745583a21/samples/Vertical_Bayshore_270x480_2997_qp110_130f.ivf"
+input_sha256 = "sha256:fb138751d111b8869ddb4f64f7da454fcfbad5b5e244c935059229d343c3607d"
+bytes = 312827
+fourcc = "AV02"
+profile = 0
+width = 270
+height = 480
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:b1e1fcf33c471d426f121ec1060d9c33695130d902d61d32339fdffb8a878d1c"
+raw_bytes = 25272000
+source_note = "samples at source revision 6b5210a15d01; reference from avmdec 3efe9fa8edad; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "vertical-bayshore-270x480-2997-qp160-130f"
+name = "Vertical_Bayshore_270x480_2997_qp160_130f.ivf"
+url = "https://raw.githubusercontent.com/EwoutH/AV2/6b5210a15d015421ada90da846f4660745583a21/samples/Vertical_Bayshore_270x480_2997_qp160_130f.ivf"
+input_sha256 = "sha256:42e3c6f0bdc751ece810b973b8553088775b15f7127174a464796b7fb686c91d"
+bytes = 61460
+fourcc = "AV02"
+profile = 0
+width = 270
+height = 480
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:e38d53a4b81bcd4300ff821046e3f785e092d223cb51860bb60a006123897a55"
+raw_bytes = 25272000
+source_note = "samples at source revision 6b5210a15d01; reference from avmdec 3efe9fa8edad; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "vertical-bayshore-270x480-2997-qp210-130f"
+name = "Vertical_Bayshore_270x480_2997_qp210_130f.ivf"
+url = "https://raw.githubusercontent.com/EwoutH/AV2/6b5210a15d015421ada90da846f4660745583a21/samples/Vertical_Bayshore_270x480_2997_qp210_130f.ivf"
+input_sha256 = "sha256:49e815280e961ec9ba7b8a5634a89c12cbd4dca422102ea9ef8b1fd8024e2950"
+bytes = 19564
+fourcc = "AV02"
+profile = 0
+width = 270
+height = 480
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:bba14544b3ffd0c208a7382b29f2ee788a2a8b7ed8fea7ce302bcaf70c5f313d"
+raw_bytes = 25272000
+source_note = "samples at source revision 6b5210a15d01; reference from avmdec 3efe9fa8edad; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "vertical-carnaby-5994-1080x1920-qp135-300f"
+name = "Vertical_Carnaby_5994_1080x1920_qp135_300f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Vertical_Carnaby_5994_1080x1920_qp135_300f.ivf"
+input_sha256 = "sha256:5c121c1a860ed503cede12bfa38a97b77afb40b9e9b36049e1af85d124df2b1b"
+bytes = 3032518
+fourcc = "AV02"
+profile = 0
+width = 1080
+height = 1920
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 300
+reference_sha256 = "sha256:531847c3494d1b0d7d1d274597424e1629af87bd793c81cffa859b4df41e6273"
+raw_bytes = 933120000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "vertical-bees-2997-1080x1920-qp135-150f"
+name = "Vertical_bees_2997_1080x1920_qp135_150f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Vertical_bees_2997_1080x1920_qp135_150f.ivf"
+input_sha256 = "sha256:ee87e67359d67d19a7da299ca04aec15b1f59ec7c41d2185a6777449d8fc05a6"
+bytes = 687808
+fourcc = "AV02"
+profile = 0
+width = 1080
+height = 1920
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 150
+reference_sha256 = "sha256:ae42a6eab8dcf4cdc79f4c295bce74a5c834d74c0663b61d8154405df3dbb8d3"
+raw_bytes = 466560000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "vertical-bees-2997-1080x1920-qp160-150f"
+name = "Vertical_bees_2997_1080x1920_qp160_150f.ivf"
+url = "https://raw.githubusercontent.com/EwoutH/AV2/6b5210a15d015421ada90da846f4660745583a21/samples/Vertical_bees_2997_1080x1920_qp160_150f.ivf"
+input_sha256 = "sha256:ab70463199ff91977e69960eacd20fe3c28092752bf15aca8b514eeef298dedc"
+bytes = 355252
+fourcc = "AV02"
+profile = 0
+width = 1080
+height = 1920
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 150
+reference_sha256 = "sha256:dc1ecd12cef83c2bcdd215dabbd641b597fc22d98a4ef8c01ca7f11270dcb49e"
+raw_bytes = 466560000
+source_note = "samples at source revision 6b5210a15d01; reference from avmdec 3efe9fa8edad; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "witcher3-1920x1080-60-8bit-420-qp110-130f"
+name = "WITCHER3_1920x1080_60_8bit_420_qp110_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/WITCHER3_1920x1080_60_8bit_420_qp110_130f.ivf"
+input_sha256 = "sha256:b3f71e556b05ca13e2832bc50ed580155678aba932a87fd1fb18e6f52e6544ee"
+bytes = 6197732
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:c83d3714cbfda42d85da3cec0a3e7d195f8bda3bdc57a142f5eed2cd79011b43"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "witcher3-1920x1080-60-8bit-420-qp135-130f"
+name = "WITCHER3_1920x1080_60_8bit_420_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/WITCHER3_1920x1080_60_8bit_420_qp135_130f.ivf"
+input_sha256 = "sha256:37bee5c74ae7e3c94c23fa96509a9a2f490b7409e3b41b5c38e87962c7a2d4dc"
+bytes = 2008564
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:86358b3369bfede1b5d4785613eca9ebfff20befbdd4ae9f76735f56260cc063"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "wikipedia-1920x1080p30-screen-qp135-130f"
+name = "Wikipedia_1920x1080p30_screen_qp135_130f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/Wikipedia_1920x1080p30_screen_qp135_130f.ivf"
+input_sha256 = "sha256:28c5749fdec0dcba149373ec5ad1730e75e8a05a8464c781510d3710db7abadb"
+bytes = 449515
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 130
+reference_sha256 = "sha256:63511e82fd0bfb27633a9fcd6f1b92c9eb4fe9c130b7702fe39247c97c02548b"
+raw_bytes = 404352000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "worldcup-1920x1080-30p-qp135-151f"
+name = "WorldCup_1920x1080_30p_qp135_151f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/WorldCup_1920x1080_30p_qp135_151f.ivf"
+input_sha256 = "sha256:ef85c9a1d805891b66df664b2965f8fa48cac5a315c50a444df40db865c2432c"
+bytes = 1421690
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 151
+reference_sha256 = "sha256:12f410a8ef4ba2558e4bd50b5cbc49ef8fdf74826adb2acd5476c1cc4ff5acf8"
+raw_bytes = 469670400
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "worldcup-far-1920x1080-30p-qp135-151f"
+name = "WorldCup_far_1920x1080_30p_qp135_151f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/WorldCup_far_1920x1080_30p_qp135_151f.ivf"
+input_sha256 = "sha256:5df1d3808fe680568f15e6b26962b12751d74acd24cfc526c8f8edff482edf6d"
+bytes = 2239082
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 151
+reference_sha256 = "sha256:0405e5066a35518fa7295fc0a79db4bd1333922bd88455bdadb7b1a2db91a8e5"
+raw_bytes = 469670400
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "controlled-burn-720p-420-qp135-334f"
+name = "controlled_burn_720p_420_qp135_334f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/controlled_burn_720p_420_qp135_334f.ivf"
+input_sha256 = "sha256:8a38a8a88fb664da67ac5ae43208c231108839f101289a3b029a55649ed1e1df"
+bytes = 2154968
+fourcc = "AV02"
+profile = 0
+width = 1280
+height = 720
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 334
+reference_sha256 = "sha256:a75dc252237ed790bd23eea12eb774d034873af4a8705d6d97d4c9640669e08b"
+raw_bytes = 461721600
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "crowd-run-1080p50-qp135-500f"
+name = "crowd_run_1080p50_qp135_500f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/crowd_run_1080p50_qp135_500f.ivf"
+input_sha256 = "sha256:cf6966d6eff4d81f28d1c1601fe2dc93018f4e9ac4c54828358d298c9a97c111"
+bytes = 22775485
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 500
+reference_sha256 = "sha256:d86d4ef0dbd4019b7747f328c32b5a69f8c29470b7fef8507ab3c64c4b372ca1"
+raw_bytes = 1555200000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "old-town-cross-1080p50-qp135-500f"
+name = "old_town_cross_1080p50_qp135_500f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/old_town_cross_1080p50_qp135_500f.ivf"
+input_sha256 = "sha256:d31d132f150d5791f129c1152c3039bc153edaef3878cf8fb7cd9fe04e553077"
+bytes = 1841692
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 500
+reference_sha256 = "sha256:bd766573e985b4434a3a2d206ffaa8e04f306a1c8290d435b13007ff4a44c960"
+raw_bytes = 1555200000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "old-town-cross-1080p50-qp160-188f"
+name = "old_town_cross_1080p50_qp160_188f.ivf"
+url = "https://raw.githubusercontent.com/EwoutH/AV2/6b5210a15d015421ada90da846f4660745583a21/samples/old_town_cross_1080p50_qp160_188f.ivf"
+input_sha256 = "sha256:17fabe4cc2e8049b1092f14c342dfcccdb64b22f0b6661eb58daedb47e80751a"
+bytes = 396199
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 188
+reference_sha256 = "sha256:e0e16d8172e48c33717f79e0fad1448741a9499c49a7a779b4097ab9e2c57ca6"
+raw_bytes = 584755200
+source_note = "samples at source revision 6b5210a15d01; reference from avmdec 3efe9fa8edad; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "old-town-cross-1080p50-tiles4x2-qp135-500f"
+name = "old_town_cross_1080p50_tiles4x2_qp135_500f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/old_town_cross_1080p50_tiles4x2_qp135_500f.ivf"
+input_sha256 = "sha256:e5728aaea63d5989a37312b606ef73549cf7f23aa59a11e76cfd64d16d197465"
+bytes = 1878266
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "4x2"
+frames = 500
+reference_sha256 = "sha256:6f75771f42273c12e2e3fb1132604d1ba77a5b3c0435f06cbd660f4108194009"
+raw_bytes = 1555200000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 4x2; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "pedestrian-area-1080p25-qp135-375f"
+name = "pedestrian_area_1080p25_qp135_375f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/pedestrian_area_1080p25_qp135_375f.ivf"
+input_sha256 = "sha256:d82f16c80b10546431372391f77bcd2d38d365094d0d3f0ef7a86b3bb274d05d"
+bytes = 2583426
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 375
+reference_sha256 = "sha256:e2c225937ba011b9c963e535f1a49d73ef3b0dd7867c4be53ede34730e053246"
+raw_bytes = 1166400000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "riverbed-1080p25-qp135-250f"
+name = "riverbed_1080p25_qp135_250f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/riverbed_1080p25_qp135_250f.ivf"
+input_sha256 = "sha256:e897a93b626a4b62b98a5fe484f8c4edf9be1c57e3af9c9a9a2870bc370e33d0"
+bytes = 10172985
+fourcc = "AV02"
+profile = 0
+width = 1920
+height = 1080
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 250
+reference_sha256 = "sha256:9d2003a07fbe1f7fbd7089fa3e1d911de1e8ae8a03f0d50cdce7a08edb6816b8"
+raw_bytes = 777600000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "vidyo3-720p-60fps-qp135-600f"
+name = "vidyo3_720p_60fps_qp135_600f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/vidyo3_720p_60fps_qp135_600f.ivf"
+input_sha256 = "sha256:9fe43472b61c6af17f70696b4029706bb1386d7d725ba43a812e45400112d835"
+bytes = 769302
+fourcc = "AV02"
+profile = 0
+width = 1280
+height = 720
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 600
+reference_sha256 = "sha256:16593c4fc80cc1af1203fd3593af9096f35f1567e42d873230be55d48256c5b3"
+raw_bytes = 829440000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "vidyo4-720p-60fps-qp135-600f"
+name = "vidyo4_720p_60fps_qp135_600f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/vidyo4_720p_60fps_qp135_600f.ivf"
+input_sha256 = "sha256:a852366e6ec6afaee82a2caa6cc8e3ddd4e099d692841ff5731f2ec63ad0bbea"
+bytes = 764533
+fourcc = "AV02"
+profile = 0
+width = 1280
+height = 720
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 600
+reference_sha256 = "sha256:c75e1190816a9f0158b6495da9560479f06f5db9aa3c857df02c0616e445e5dc"
+raw_bytes = 829440000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "vidyo4-720p-60fps-qp160-240f"
+name = "vidyo4_720p_60fps_qp160_240f.ivf"
+url = "https://raw.githubusercontent.com/EwoutH/AV2/6b5210a15d015421ada90da846f4660745583a21/samples/vidyo4_720p_60fps_qp160_240f.ivf"
+input_sha256 = "sha256:cd7b1cddd7310459c32abd5040773240c9399941996675f48015fcc13cb9ab52"
+bytes = 194846
+fourcc = "AV02"
+profile = 0
+width = 1280
+height = 720
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 240
+reference_sha256 = "sha256:dc71af4ff37df81e53b20d87c28fab4e1677f8c5373c4c5e268ba356e7c867e0"
+raw_bytes = 331776000
+source_note = "samples at source revision 6b5210a15d01; reference from avmdec 3efe9fa8edad; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"
+
+[[case]]
+id = "west-wind-easy-720p-420-qp135-570f"
+name = "west_wind_easy_720p_420_qp135_570f.ivf"
+url = "https://github.com/EwoutH/AV2/releases/download/hd-streams-2026-10/west_wind_easy_720p_420_qp135_570f.ivf"
+input_sha256 = "sha256:da855d07cf3c44b47dcd2992f3bc93f7eb853f90f0fe8794f733cfcca9c8fc11"
+bytes = 7948438
+fourcc = "AV02"
+profile = 0
+width = 1280
+height = 720
+bit_depth = 8
+chroma = "4:2:0"
+tiles = "1x1"
+frames = 570
+reference_sha256 = "sha256:4be3b751dc6871f90210999ef942a16ada73ff9954b732f7e6e7475d1e4e6315"
+raw_bytes = 787968000
+source_note = "release hd-streams-2026-10; reference from avmdec 9c72cb56a781; tiles of the first frame 1x1; the sequence header allows film grain, frame use unknown"

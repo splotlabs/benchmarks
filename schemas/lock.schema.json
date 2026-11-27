@@ -140,6 +140,11 @@
         "chroma": { "$ref": "common.schema.json#/$defs/chroma" },
         "frames": { "type": "integer", "minimum": 1 },
         "film_grain": { "type": ["boolean", "null"] },
+        "mirrors": {
+          "description": "Optional extra sources, tried in order after url. Each must give the same bytes.",
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/url" }
+        },
         "reference": {
           "type": "object",
           "additionalProperties": false,

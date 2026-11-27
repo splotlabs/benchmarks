@@ -36,7 +36,7 @@ Digest strings are `sha256:<64 hex>`.
 
 | Schema | File | Purpose and key fields |
 | --- | --- | --- |
-| `splotbench.lock/1` | `LOCK.json`, `lock.json` | Every execution-relevant value, resolved once: `harness` snapshot, `implementations` (commit, identity, release), `corpus`, `suite.cases` with reference digests, `roles`, `measurement`. |
+| `splotbench.lock/1` | `LOCK.json`, `lock.json` | Every execution-relevant value, resolved once: `harness` snapshot, `implementations` (commit, identity, release), `corpus`, `suite.cases` with reference digests and optional `mirrors`, `roles`, `measurement`. |
 | `splotbench.build/1` | `W/build/<id>/<commit>/build.json`, `builds.json` (an array) | One build: `build_id`, `class`, `source` (repository, commit, identity, release, `build_origin`, snapshot, lock files), `binary_path`, `binary_sha256`, `libraries`, `version_output`, `target`, `toolchain`, `configuration`, `environment` (allow-listed variables only). |
 | `splotbench.host/1` | `host.json` | `machine_id`, `fingerprint`, `fingerprint_digest`. |
 | `splotbench.correctness/1` | `correctness.jsonl` | One untimed check per build, case and thread budget: `outcome`, output and reference byte counts and digests. |
@@ -56,6 +56,23 @@ sorted, with mtime 0, uid and gid 0, no owner names and mode 0644. The gzip
 header has no name and mtime 0. The bundle digest is the sha256 of the file.
 A reader refuses absolute paths, `..`, links, devices, directories, entries
 missing from `SHA256SUMS`, digest mismatches and members that fail their schema.
+
+## Plan, corpus and cache
+
+A campaign plan (`campaigns/template.toml`) is TOML. `bench lock` resolves it into
+a lock. Plan keys: `name`, `origin`, `suite`, `warmups`, `repetitions`, `timeout_s`,
+`order_seed`, `noise_max_range_permille` (an integer, no float), `[[implementation]]`
+(`id`, `adapter`, `repository`, `select`, optional `name`, `release_tag_pattern`,
+`release_url_template`), `[roles.NAME]` (`arch`, `threads`). Optional `corpus` and
+`suites` name other manifest files, relative to the plan; the default is `corpus/`
+in the harness.
+
+The corpus manifest (`corpus/ewouth-av2.toml`) is a pinned import. The corpus digest
+is the sha256 of the canonical JSON of the whole parsed manifest, so any change to a
+stream fact changes every lock. The manifest keeps facts that the lock schema has no
+field for (`fourcc`, `profile`, `tiles`); the digest covers them. A stream without a
+`film_grain` key has `film_grain: null` in the lock. The streams are cached as
+`W/corpus/<input sha256 hex>.<ext>` and verified by size and SHA-256 on every use.
 
 ## Source, release and build provenance
 
