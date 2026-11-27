@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Shared helpers: errors, canonical JSON, digests, atomic writes, subprocesses."""
 
 from __future__ import annotations

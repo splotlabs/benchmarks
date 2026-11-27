@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Corpus manifest, suites, the verified stream cache and `bench prepare`."""
 
 from __future__ import annotations

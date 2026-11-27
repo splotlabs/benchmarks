@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Host inspection: native architecture, observed fingerprint, machine id and the host lock.
 
 Nothing here changes a system setting. A fact that the OS does not give without

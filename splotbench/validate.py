@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """`bench validate`: check JSON and JSONL files, bundles and dataset directories."""
 
 from __future__ import annotations

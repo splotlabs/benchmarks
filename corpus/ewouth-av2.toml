@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 
 # Pinned import of the public AV2 conformance corpus, 88 streams. The stream bytes are
 # not in this repository. The harness downloads them from the publisher and checks size

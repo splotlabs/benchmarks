@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """`bench verify`: the untimed correctness pass of methodology decode-cli-wall/1.
 
 For each build, case and thread budget of a role, run the adapter command with

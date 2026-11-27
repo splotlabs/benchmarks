@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """`bench assemble`: check run bundles against a lock and build a dataset directory.
 
 The dataset is a pure function of the lock, the selected bundles, the origin and the

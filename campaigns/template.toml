@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 # Campaign plan template. Copy it, edit it, then run:
 #   ./bench lock my-plan.toml -o my-lock.json
 # `bench lock` resolves every `select` once and writes the lock. Later commands read only the lock.

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Splot (`splot decode`). Inspected source facts are in docs/METHODOLOGY.md."""
 
 from __future__ import annotations

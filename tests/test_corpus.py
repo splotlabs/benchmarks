@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 """Tests for the verified stream cache and `bench prepare`. Sources are file: URLs; no network."""
 
 import copy
