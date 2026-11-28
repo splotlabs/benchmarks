@@ -1,0 +1,73 @@
+{
+  "schema": "splotbench.dataset/1",
+  "dataset_id": "ds-2789f40c250f9cd0",
+  "campaign_id": "full-2026-11-x86-64-79d1c561ad63",
+  "name": "full-2026-11-x86-64",
+  "lock_digest": "sha256:79d1c561ad63862c639d86a6ecfc455edd296e0338d4ba3de7f4f769f1fa2045",
+  "origin": "official",
+  "complete": true,
+  "aggregation": {
+    "version": "summary/1",
+    "harness": {
+      "repository": "https://github.com/splotlabs/benchmarks",
+      "commit": "9cbe564db0dfffc09acb77405fa9fdf3465bcb95",
+      "snapshot_sha256": "sha256:c72257090e1cdf6aeda862229592f4600763670c734d86955bbb9c012694bec0",
+      "class": "verified"
+    }
+  },
+  "runs": [
+    {
+      "run_id": "x86-64-20261127T214137Z-12cae7b7",
+      "role": "x86-64",
+      "machine_id": "i7-12700h-laptop",
+      "state": "complete",
+      "class": "verified",
+      "bundle": {
+        "path": "bundles/x86-64-20261127T214137Z-12cae7b7.tar.gz",
+        "sha256": "sha256:059f3c698958d4f6723af9ad1a183c923b1d60c625e95b67083bbbc5af880c91",
+        "bytes": 453995
+      }
+    }
+  ],
+  "coverage": {
+    "roles_expected": [
+      "x86-64"
+    ],
+    "roles_present": [
+      "x86-64"
+    ],
+    "cells_expected": 948,
+    "cells_ok": 948,
+    "status_counts": {
+      "ok": 948,
+      "incorrect": 0,
+      "unsupported": 0,
+      "timeout": 0,
+      "error": 0,
+      "interrupted": 0,
+      "not-run": 0
+    }
+  },
+  "files": [
+    {
+      "path": "bundles/x86-64-20261127T214137Z-12cae7b7.tar.gz",
+      "sha256": "sha256:059f3c698958d4f6723af9ad1a183c923b1d60c625e95b67083bbbc5af880c91",
+      "bytes": 453995
+    },
+    {
+      "path": "lock.json",
+      "sha256": "sha256:20183e41a9ff7ebb802a64ceca95f20f93ad2dd6e4f9131ae6baaeee586bff85",
+      "bytes": 102292
+    },
+    {
+      "path": "summary.csv",
+      "sha256": "sha256:5243d4d10da057ee8714df5e9495ad4f9c98651d6a4f1e315c7708f7398d7a6e",
+      "bytes": 223599
+    },
+    {
+      "path": "summary.json",
+      "sha256": "sha256:35ae8d0c4c947ec7630af3b681aa74359bcee619507028a6d6aceb7c5c1166c8",
+      "bytes": 1135332
+    }
+  ]
+}
