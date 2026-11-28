@@ -11,4 +11,5 @@ An existing dataset directory never changes and is never deleted. A correction i
 dataset. Add a dataset only with `bench publish`, through a pull request. See
 [docs/PUBLISHING.md](../docs/PUBLISHING.md).
 
-No results are published yet.
+`index.json` lists the published datasets. The website shows them at
+<https://splotlabs.io/benchmarks/>.

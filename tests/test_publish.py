@@ -291,9 +291,10 @@ class PublishedDirectoryTest(PublishBase):
         return validate.published_problems(self.target)
 
     def test_committed_directory_is_valid(self):
+        # The committed directory holds whatever is published; it must be valid, whatever it holds.
         self.assertEqual(validate.published_problems(ROOT / "published"), [])
         document = json.loads((ROOT / "published" / "index.json").read_text())
-        self.assertEqual(document, {"schema": "splotbench.index/1", "latest_complete": None, "datasets": []})
+        self.assertEqual(document["schema"], "splotbench.index/1")
 
     def test_directory_with_a_published_dataset_is_valid(self):
         self.published(promote=True)
