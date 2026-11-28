@@ -4,8 +4,8 @@ A reproducible benchmark harness for three AV2 decoders: Splot, dav2d and avmdec
 The harness is a small command-line tool, `bench`. It does not need a checkout of
 the Splot repository or of the website.
 
-The harness is implemented. **No benchmark results are published yet.** The first
-official campaign is a later request of the owner. The work is tracked in the Epic
+The harness is implemented. Published datasets are in [`published/`](published/) and are
+shown at <https://splotlabs.io/benchmarks/>. The work is tracked in the Epic
 [splotlabs/splot#2046](https://github.com/splotlabs/splot/issues/2046).
 
 ## Prerequisites
