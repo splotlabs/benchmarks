@@ -1,0 +1,73 @@
+{
+  "schema": "splotbench.dataset/1",
+  "dataset_id": "ds-dbc0ca594fd85adc",
+  "campaign_id": "full-2026-11-arm64-99d6eaf642a8",
+  "name": "full-2026-11-arm64",
+  "lock_digest": "sha256:99d6eaf642a81623ff4963d0114ed2b0c86fea4268d87823084887906f700987",
+  "origin": "official",
+  "complete": true,
+  "aggregation": {
+    "version": "summary/1",
+    "harness": {
+      "repository": "https://github.com/splotlabs/benchmarks",
+      "commit": "9cbe564db0dfffc09acb77405fa9fdf3465bcb95",
+      "snapshot_sha256": "sha256:c72257090e1cdf6aeda862229592f4600763670c734d86955bbb9c012694bec0",
+      "class": "verified"
+    }
+  },
+  "runs": [
+    {
+      "run_id": "arm64-20261127T194551Z-fe99d482",
+      "role": "arm64",
+      "machine_id": "m2max-01",
+      "state": "complete",
+      "class": "verified",
+      "bundle": {
+        "path": "bundles/arm64-20261127T194551Z-fe99d482.tar.gz",
+        "sha256": "sha256:08603778b08cb455cd9fa97f8522e6ef0ea3c164d71af2a09f9830ff1b798984",
+        "bytes": 443832
+      }
+    }
+  ],
+  "coverage": {
+    "roles_expected": [
+      "arm64"
+    ],
+    "roles_present": [
+      "arm64"
+    ],
+    "cells_expected": 948,
+    "cells_ok": 948,
+    "status_counts": {
+      "ok": 948,
+      "incorrect": 0,
+      "unsupported": 0,
+      "timeout": 0,
+      "error": 0,
+      "interrupted": 0,
+      "not-run": 0
+    }
+  },
+  "files": [
+    {
+      "path": "bundles/arm64-20261127T194551Z-fe99d482.tar.gz",
+      "sha256": "sha256:08603778b08cb455cd9fa97f8522e6ef0ea3c164d71af2a09f9830ff1b798984",
+      "bytes": 443832
+    },
+    {
+      "path": "lock.json",
+      "sha256": "sha256:db97003985ca9d9a16f09d16e11d1ec4f9d5abc9aba2cb04b9588ec3372f9dac",
+      "bytes": 102291
+    },
+    {
+      "path": "summary.csv",
+      "sha256": "sha256:4e35cddc4ae0d6a92d40fa6481dec58fe9c686c841df4543839d79cf20050805",
+      "bytes": 217143
+    },
+    {
+      "path": "summary.json",
+      "sha256": "sha256:5446653064193c920e0841530137f6daf2b4097c395291fcc90bfe5f0859d7a7",
+      "bytes": 1111885
+    }
+  ]
+}
