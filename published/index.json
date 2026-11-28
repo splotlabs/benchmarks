@@ -1,6 +1,6 @@
 {
   "schema": "splotbench.index/1",
-  "latest_complete": "ds-2789f40c250f9cd0",
+  "latest_complete": "ds-dbc0ca594fd85adc",
   "datasets": [
     {
       "dataset_id": "ds-2789f40c250f9cd0",
@@ -24,6 +24,29 @@
         }
       ],
       "published_utc": "2026-11-28T02:38:06Z"
+    },
+    {
+      "dataset_id": "ds-dbc0ca594fd85adc",
+      "campaign_id": "full-2026-11-arm64-99d6eaf642a8",
+      "name": "full-2026-11-arm64",
+      "origin": "official",
+      "complete": true,
+      "workload": "decode",
+      "methodology": "decode-cli-wall/1",
+      "suite": "full",
+      "measured_utc": {
+        "first": "2026-11-27T22:23:25Z",
+        "last": "2026-11-28T08:34:17Z"
+      },
+      "path": "datasets/ds-dbc0ca594fd85adc/",
+      "series": [
+        {
+          "machine_id": "m2max-01",
+          "role": "arm64",
+          "series_id": "ser-90f7b7fdb59dece0"
+        }
+      ],
+      "published_utc": "2026-11-28T11:25:14Z"
     }
   ]
 }
